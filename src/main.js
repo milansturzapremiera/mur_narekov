@@ -483,7 +483,7 @@ function render(now) {
   const bands=sceneBands(), ground=bands.wallBottom, wallTop=bands.wallTop, off=state.camera;
   ctx.save();
   ctx.translate(playerScreen,ground);ctx.scale(state.zoom,state.zoom);ctx.translate(-playerScreen,-ground);
-  drawSceneLayer(ctx,'behind',off,wallTop,ground,now);
+  ctx.save();ctx.beginPath();ctx.rect(0,0,innerWidth,wallTop);ctx.clip();drawSceneLayer(ctx,'behind',off,wallTop,ground,now);ctx.restore();
   brickWall(ctx,off,wallTop,ground);
   drawWallMountedAssets(ctx,off,wallTop,ground,now);
   graffitiOldestFirst().forEach(g=>{const x=g.x*PX_PER_M-off;if(x<-180||x>innerWidth+180)return;drawGraffitiText(ctx,g,x,wallTop+(ground-wallTop)*g.y);});
@@ -579,12 +579,13 @@ function setPlacement(section=state.section,u=state.positionU,y=state.targetY){
 function openEditor(){
   if(writeLimitReached()){toast('Svoj jediný odkaz si už zanechal. Teraz si návštevník.');return;}
   setGraffitiIndex(false);
+  setMobileUiHidden(false);
   state.edit=true;state.angle=0;$('#angle').value='0';$('#angleValue').textContent='0°';
   const worldPx=state.x*PX_PER_M;state.section=Math.floor(worldPx/SECTION_PX);
   const within=worldPx-state.section*SECTION_PX-PILLAR_PX,u=within/(SECTION_PX-PILLAR_PX);
-  setPlacement(state.section,u,.5);$('#editor').classList.add('open');$('#editor').setAttribute('aria-hidden','false');$('#message').focus();
+  setPlacement(state.section,u,.5);document.documentElement.classList.add('graffiti-edit-mode');$('#editor').classList.add('open');$('#editor').setAttribute('aria-hidden','false');if(!mobileViewport.matches)$('#message').focus();
 }
-function closeEditor(){state.edit=false;$('#editor').classList.remove('open');$('#editor').setAttribute('aria-hidden','true');canvas.focus();}
+function closeEditor(){state.edit=false;document.documentElement.classList.remove('graffiti-edit-mode');setMobileUiHidden(false);$('#editor').classList.remove('open');$('#editor').setAttribute('aria-hidden','true');canvas.focus();}
 $('#writeButton').addEventListener('click',openEditor);$('#editorClose').addEventListener('click',closeEditor);
 function placeFromPicker(clientX,clientY){const picker=$('#positionPicker'),rect=picker.getBoundingClientRect();setPlacement(state.section,(clientX-rect.left)/rect.width,(clientY-rect.top)/rect.height);}
 $('#positionPicker').addEventListener('pointerdown',e=>{e.preventDefault();placeFromPicker(e.clientX,e.clientY);});
