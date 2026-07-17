@@ -565,7 +565,16 @@ function render(now) {
   const foreground=[];
   sceneLayerItems('front').forEach(item=>{if(Number(item.y)<=1)return;const width=item.widthM*PX_PER_M,x=item.x*PX_PER_M-off;if(x+width/2<0||x-width/2>innerWidth)return;foreground.push({y:wallTop+item.y*(ground-wallTop),draw:()=>drawSceneItem(ctx,item,off,wallTop,ground,now)});});
   foreground.push({y:playerBaseline,draw:()=>{drawPerson(ctx,playerX,playerBaseline,playerScale,state,state.velocity/3.2,state.stride,movementEnergy);drawNameLabel(ctx,playerX,playerBaseline,playerScale,state.name,state.nameColor);}});
-  state.others.filter(p=>p.id!==uid).forEach(p=>{const x=p.x*PX_PER_M-off;if(x>-100&&x<innerWidth+100){const baseline=baselineFor(.5),scale=depthScale(.5);foreground.push({y:baseline,draw:()=>{drawPerson(ctx,x,baseline,scale,{...p,dir:p.dir||1},0,0);drawNameLabel(ctx,x,baseline,scale,p.name,p.nameColor);}});}});
+  state.others.forEach(p=>{
+    const predictionAge=Math.max(0,Math.min(1.25,(now-p.receivedAt)/1000));
+    const predictedX=Math.max(0,Math.min(700,p.targetX+p.velocity*predictionAge));
+    const correction=predictedX-p.displayX;
+    p.displayX=Math.abs(correction)>12?predictedX:p.displayX+correction*smooth(reduced?18:9);
+    const remoteEnergy=Math.min(1,Math.max(Math.abs(p.velocity)/5.8,Math.min(1,Math.abs(correction)*.75)));
+    p.stride+=remoteEnergy*dt*(p.running?7.4:4.6);
+    const x=p.displayX*PX_PER_M-off;
+    if(x>-100&&x<innerWidth+100){const laneValue=Number(p.lane),lane=Number.isFinite(laneValue)?Math.max(0,Math.min(1,laneValue)):.5,baseline=baselineFor(lane),scale=depthScale(lane);foreground.push({y:baseline,draw:()=>{drawPerson(ctx,x,baseline,scale,{...p,dir:p.dir||1},p.velocity/3.2,p.stride,remoteEnergy);drawNameLabel(ctx,x,baseline,scale,p.name,p.nameColor);}});}
+  });
   foreground.sort((a,b)=>a.y-b.y).forEach(entry=>entry.draw());
   if(state.edit){
     const sx=state.section*SECTION_PX-off+PILLAR_PX,sw=SECTION_PX-PILLAR_PX,tx=state.targetX*PX_PER_M-off,ty=wallTop+(ground-wallTop)*state.targetY;
@@ -608,14 +617,27 @@ async function loadWorld(){
   try{const r=await fetch('/api/graffiti',{headers:{'X-Writer-Id':visitorId}});if(!r.ok)throw 0;const data=await r.json();state.mode='shared';state.graffiti=data.items;state.hasWritten=WRITE_LIMIT_ENABLED&&Boolean(data.hasWritten);if(state.hasWritten)storeValue(WRITTEN_KEY,'1');else removeStoredValue(WRITTEN_KEY);$('#statusText').textContent='spoločná stena';$('#statusDot').classList.add('online');if(!state.hasWritten)$('#editorNote').textContent=WRITE_LIMIT_ENABLED?'Máš jeden odkaz. Po uložení ho uvidia aj ďalší návštevníci.':'DEV režim: odkazy môžeš pridávať bez obmedzenia.';}catch{$('#statusText').textContent='lokálna stena';}finally{updateWriteAccess();}
 }
 loadWorld();
-channel?.addEventListener('message',e=>{if(e.data.type==='graffiti')state.graffiti=e.data.items;if(e.data.type==='presence')state.others=e.data.players;if(WRITE_LIMIT_ENABLED&&e.data.type==='written'){state.hasWritten=true;if(state.edit)closeEditor();updateWriteAccess();}});
+function receivePresence(players,{replace=false}={}){
+  const receivedAt=performance.now(),current=new Map(state.others.map(player=>[player.id,player])),incoming=new Set();
+  (Array.isArray(players)?players:[]).forEach(packet=>{
+    const id=String(packet?.id||'');if(!id||id===uid)return;incoming.add(id);
+    const previous=current.get(id),packetTime=Number(packet.t)||Date.now();
+    if(previous&&packetTime<previous.packetTime)return;
+    const targetX=Math.max(0,Math.min(700,Number(packet.x)||0));
+    current.set(id,{...packet,id,targetX,displayX:Number.isFinite(previous?.displayX)?previous.displayX:targetX,velocity:Math.max(-40,Math.min(40,Number(packet.velocity)||0)),running:packet.running===true,packetTime,receivedAt,stride:previous?.stride||0});
+  });
+  if(replace)for(const id of current.keys())if(!incoming.has(id))current.delete(id);
+  state.others=[...current.values()].filter(player=>receivedAt-player.receivedAt<16000);
+}
+channel?.addEventListener('message',e=>{if(e.data.type==='graffiti')state.graffiti=e.data.items;if(e.data.type==='presence')receivePresence(e.data.players);if(WRITE_LIMIT_ENABLED&&e.data.type==='written'){state.hasWritten=true;if(state.edit)closeEditor();updateWriteAccess();}});
 
+let presenceRequestPending=false;
 setInterval(async()=>{
   if(!state.started)return;
-  const me={id:uid,x:state.x,lane:state.lane,skin:state.skin,name:state.name,nameColor:state.nameColor,dir:state.dir};
+  const me={id:uid,x:state.x,lane:state.lane,skin:state.skin,name:state.name,nameColor:state.nameColor,dir:state.dir,velocity:state.velocity,running:state.running,t:Date.now()};
   channel?.postMessage({type:'presence',players:[me]});
-  if(state.mode==='shared')try{const r=await fetch('/api/presence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(me)});if(r.ok)state.others=(await r.json()).players;}catch{}
-},3000);
+  if(state.mode==='shared'&&!presenceRequestPending){presenceRequestPending=true;try{const r=await fetch('/api/presence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(me)});if(r.ok)receivePresence((await r.json()).players,{replace:true});}catch{}finally{presenceRequestPending=false;}}
+},1000);
 
 $('#characterForm').addEventListener('change',e=>{if(e.target.name==='skin')state.skin=e.target.value;drawAvatar();});
 $('#characterForm').addEventListener('submit',e=>{e.preventDefault();startMusic();state.name=$('#playerName').value.trim().slice(0,16);state.nameColor=$('#playerNameColor').value;state.started=true;$('#entry').classList.add('gone');canvas.focus();});

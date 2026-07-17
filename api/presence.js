@@ -11,7 +11,10 @@ export default async function handler(req, res) {
         skin: String(p.skin).slice(0, 20),
         name: String(p.name || '').trim().slice(0, 16),
         nameColor: /^#[0-9a-f]{6}$/i.test(p.nameColor) ? p.nameColor : '#f0c849',
-        dir: Number(p.dir) < 0 ? -1 : 1, t: Date.now()
+        dir: Number(p.dir) < 0 ? -1 : 1,
+        velocity: Math.max(-40, Math.min(40, Number(p.velocity) || 0)),
+        running: p.running === true,
+        t: Date.now()
       };
       await command(['LPUSH', 'mur:presence', JSON.stringify(safe)]);
       await command(['LTRIM', 'mur:presence', '0', '199']);
