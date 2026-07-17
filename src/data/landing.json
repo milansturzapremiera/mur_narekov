@@ -1,0 +1,89 @@
+{
+  "eyebrow": "BRATISLAVA · Jarošova",
+  "titleLine1": "Aká krajina, taký Múr Nárekov...",
+  "titleLine2": "",
+  "lead": "Prejdi sa a uľav si bez toho aby sme to museli platiť z našich daní...",
+  "controlsTitle": "Ovládanie",
+  "movementText": "alebo šípky · pohyb",
+  "runText": "drž pre beh",
+  "mobileHint": "Na mobile drž ľavú alebo pravú stranu obrazovky. Tlačidlá −/+ približujú múr.",
+  "skinLegend": "Odtieň pokožky",
+  "nameLegend": "Menovka",
+  "nameOptional": "voliteľné",
+  "nameLabel": "Meno",
+  "namePlaceholder": "MAX 16 ZNAKOV",
+  "colorLabel": "Farba",
+  "submitButton": "Chcem sa prejsť",
+  "footer": "",
+  "styles": {
+    "displayFont": "Barlow Condensed",
+    "bodyFont": "Archivo Black",
+    "backgroundColor": "#f09800",
+    "formBackgroundColor": "#ffffff",
+    "backgroundImage": "",
+    "backgroundFit": "contain",
+    "backgroundPositionX": -2,
+    "backgroundPositionY": 12,
+    "backgroundOpacity": 42,
+    "textColor": "#25211d",
+    "titleColor": "#25211d",
+    "eyebrowColor": "#25211d",
+    "accentColor": "#803623",
+    "buttonBackgroundColor": "#f09800",
+    "buttonTextColor": "#25211d",
+    "titleSizeDesktop": 125,
+    "titleSizeMobile": 59,
+    "leadSizeDesktop": 20,
+    "leadSizeMobile": 17,
+    "desktopCopyX": 0,
+    "desktopCopyY": 0,
+    "desktopFormX": -79,
+    "desktopFormY": 7,
+    "mobileCopyX": 0,
+    "mobileCopyY": 0,
+    "mobileFormX": -3,
+    "mobileFormY": 0,
+    "elements": {
+      "eyebrow": {
+        "sizeDesktop": 47,
+        "sizeMobile": 14,
+        "xDesktop": -29,
+        "yDesktop": -27,
+        "xMobile": 0,
+        "yMobile": 0
+      },
+      "title": {
+        "sizeDesktop": 72,
+        "sizeMobile": 64,
+        "xDesktop": 0,
+        "yDesktop": 0,
+        "xMobile": 0,
+        "yMobile": 0
+      },
+      "lead": {
+        "sizeDesktop": 20,
+        "sizeMobile": 17,
+        "xDesktop": 0,
+        "yDesktop": 0,
+        "xMobile": 0,
+        "yMobile": 0
+      },
+      "controls": {
+        "sizeDesktop": 12,
+        "sizeMobile": 12,
+        "xDesktop": 0,
+        "yDesktop": 0,
+        "xMobile": 0,
+        "yMobile": 0
+      },
+      "footer": {
+        "sizeDesktop": 12,
+        "sizeMobile": 12,
+        "xDesktop": 0,
+        "yDesktop": 0,
+        "xMobile": 0,
+        "yMobile": 0
+      }
+    }
+  }
+}
