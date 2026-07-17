@@ -59,6 +59,9 @@ const state = {
 const uid = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 const channel = 'BroadcastChannel' in window ? new BroadcastChannel('mur-narekov') : null;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const mobileViewport = matchMedia('(max-width: 760px)');
+const playerScreenX = () => innerWidth * (mobileViewport.matches ? .5 : .38);
+const sceneObjectScale = () => mobileViewport.matches ? Math.max(.28, Math.min(.55, innerWidth / 1440)) : 1;
 
 document.querySelector('#app').innerHTML = `
   <main id="game" aria-label="Múr nárekov, interaktívna prechádzka">
@@ -90,6 +93,9 @@ document.querySelector('#app').innerHTML = `
         </div>
       </div>
     </div>
+    <button class="mobile-ui-toggle" id="mobileUiToggle" type="button" aria-pressed="false" aria-label="Skryť spodné ovládanie">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.6"></circle><path class="eye-slash" d="m4 4 16 16"></path></svg>
+    </button>
     <button class="write-button" id="writeButton" type="button"><span>＋</span> Zanechať odkaz</button>
     <div class="touch-controls" aria-label="Pohyb po chodníku">
       <button class="touch-direction touch-left" data-move-x="-1" aria-label="Kráčať doľava"></button>
@@ -384,7 +390,8 @@ function sceneLayerItems(layer) {
 }
 
 function drawSceneItem(c, item, offset, wallTop, ground, now) {
-    const image = sceneImage(item.src), width = item.widthM * PX_PER_M;
+    const image = sceneImage(item.src);
+    const width = item.widthM * PX_PER_M * sceneObjectScale();
     if (!image.complete || !image.naturalWidth) return;
     const frames = Math.max(2, Math.min(60, Math.round(Number(item.frames) || 5)));
     const animated = item.animated === true && frames > 1;
@@ -462,7 +469,7 @@ function render(now) {
     state.x=Math.max(0,Math.min(700,state.x+state.velocity*dt));
     state.stride+=movementEnergy*dt*(running?7.4:4.6);
   }
-  const playerScreen=.38*innerWidth, desired=state.x*PX_PER_M-playerScreen;
+  const playerScreen=playerScreenX(), desired=state.x*PX_PER_M-playerScreen;
   state.camera+=(Math.max(0,Math.min(700*PX_PER_M-innerWidth,desired))-state.camera)*smooth(reduced?12:running&&import.meta.env.DEV?10:4.2);
   const currentMeter=Math.min(700,Math.floor(state.x)+1);
   if(currentMeter!==renderedMeter){renderedMeter=currentMeter;$('#meterValue').textContent=`${currentMeter} – 700`;}
@@ -483,7 +490,7 @@ function render(now) {
   const depthScale=lane=>Math.max(.65,Math.min(1.18,basePlayerScale*(.78+lane*.28)));
   const playerX=state.x*PX_PER_M-off,playerBaseline=baselineFor(state.lane),playerScale=depthScale(state.lane);
   const foreground=[];
-  sceneLayerItems('front').forEach(item=>{if(Number(item.y)<=1)return;const width=item.widthM*PX_PER_M,x=item.x*PX_PER_M-off;if(x+width/2<0||x-width/2>innerWidth)return;foreground.push({y:wallTop+item.y*(ground-wallTop),draw:()=>drawSceneItem(ctx,item,off,wallTop,ground,now)});});
+  sceneLayerItems('front').forEach(item=>{if(Number(item.y)<=1)return;const width=item.widthM*PX_PER_M*sceneObjectScale(),x=item.x*PX_PER_M-off;if(x+width/2<0||x-width/2>innerWidth)return;foreground.push({y:wallTop+item.y*(ground-wallTop),draw:()=>drawSceneItem(ctx,item,off,wallTop,ground,now)});});
   foreground.push({y:playerBaseline,draw:()=>{drawPerson(ctx,playerX,playerBaseline,playerScale,state,state.velocity/3.2,state.stride,movementEnergy);drawNameLabel(ctx,playerX,playerBaseline,playerScale,state.name,state.nameColor);}});
   state.others.filter(p=>p.id!==uid).forEach(p=>{const x=p.x*PX_PER_M-off;if(x>-100&&x<innerWidth+100){const baseline=baselineFor(.5),scale=depthScale(.5);foreground.push({y:baseline,draw:()=>{drawPerson(ctx,x,baseline,scale,{...p,dir:p.dir||1},0,0);drawNameLabel(ctx,x,baseline,scale,p.name,p.nameColor);}});}});
   foreground.sort((a,b)=>a.y-b.y).forEach(entry=>entry.draw());
@@ -548,6 +555,9 @@ function setZoom(value){state.targetZoom=Math.max(1,Math.min(1.6,value));documen
 document.querySelectorAll('[data-zoom]').forEach(button=>button.addEventListener('click',()=>setZoom(state.targetZoom+Number(button.dataset.zoom))));
 setZoom(state.targetZoom);
 const desktopZoom=$('.desktop-zoom'),desktopZoomToggle=$('.desktop-zoom-toggle');
+const mobileUiToggle=$('#mobileUiToggle');
+function setMobileUiHidden(hidden){document.documentElement.classList.toggle('mobile-ui-hidden',hidden);mobileUiToggle.setAttribute('aria-pressed',String(hidden));mobileUiToggle.setAttribute('aria-label',hidden?'Zobraziť spodné ovládanie':'Skryť spodné ovládanie');}
+mobileUiToggle.addEventListener('click',()=>setMobileUiHidden(!document.documentElement.classList.contains('mobile-ui-hidden')));
 function setDesktopZoomMode(active){desktopZoom.classList.toggle('active',active);document.documentElement.classList.toggle('desktop-zoom-mode',active);desktopZoomToggle.setAttribute('aria-expanded',String(active));desktopZoomToggle.setAttribute('aria-label',active?'Ukončiť zoom a čistý režim':'Otvoriť zoom a čistý režim');if(active)setGraffitiIndex(false);}
 desktopZoomToggle.addEventListener('click',()=>setDesktopZoomMode(!desktopZoom.classList.contains('active')));
 addEventListener('keydown',event=>{if(event.key==='Escape'&&desktopZoom.classList.contains('active'))setDesktopZoomMode(false);});
@@ -577,7 +587,7 @@ $('#positionPicker').addEventListener('pointerdown',e=>{e.preventDefault();place
 $('#positionPicker').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const dx=e.key==='ArrowLeft'?-.03:e.key==='ArrowRight'?.03:0,dy=e.key==='ArrowUp'?-.05:e.key==='ArrowDown'?.05:0;setPlacement(state.section,state.positionU+dx,state.targetY+dy);});
 $('#angle').addEventListener('input',e=>{state.angle=Number(e.target.value);$('#angleValue').textContent=`${state.angle>0?'+':''}${state.angle}°`;updatePreview();});
 canvas.addEventListener('pointerdown',e=>{
-  if(!state.edit)return;const bands=sceneBands(),wallTop=bands.wallTop,ground=bands.wallBottom,playerScreen=.38*innerWidth;
+  if(!state.edit)return;const bands=sceneBands(),wallTop=bands.wallTop,ground=bands.wallBottom,playerScreen=playerScreenX();
   const unzoomedX=playerScreen+(e.clientX-playerScreen)/state.zoom,unzoomedY=ground+(e.clientY-ground)/state.zoom;if(unzoomedY<wallTop||unzoomedY>ground)return;
   const worldX=unzoomedX+state.camera,section=Math.floor(worldX/SECTION_PX),within=worldX-section*SECTION_PX;
   if(within<PILLAR_PX){toast('Toto je pilier — vyber plochu medzi piliermi.');return;}
