@@ -427,6 +427,40 @@ function drawSceneLayer(c, layer, offset, wallTop, ground, now) {
   sceneLayerItems(layer).forEach(item => drawSceneItem(c,item,offset,wallTop,ground,now));
 }
 
+function screenToWorldPoint(clientX,clientY) {
+  const bands=sceneBands(),ground=bands.wallBottom,playerScreen=playerScreenX();
+  const screenX=playerScreen+(clientX-playerScreen)/state.zoom;
+  const screenY=ground+(clientY-ground)/state.zoom;
+  return {bands,screenX,screenY,x:(screenX+state.camera)/PX_PER_M,y:(screenY-bands.wallTop)/(ground-bands.wallTop)};
+}
+
+function pickSceneItem(clientX,clientY) {
+  const point=screenToWorldPoint(clientX,clientY),wallTop=point.bands.wallTop,ground=point.bands.wallBottom;
+  const foreground=state.sceneItems.filter(item=>item.layer==='front'&&Number(item.y)>1).sort((a,b)=>Number(a.y)-Number(b.y)).reverse();
+  const wallItems=state.sceneItems.filter(item=>item.layer==='front'&&Number(item.y)<=1).reverse();
+  const behind=state.sceneItems.filter(item=>item.layer==='behind').reverse();
+  for(const item of [...foreground,...wallItems,...behind]){
+    if(mobileViewport.matches&&item.src.includes('1784285163468-duha'))continue;
+    if(item.layer==='behind'&&point.screenY>wallTop)continue;
+    const image=sceneImage(item.src);if(!image.complete||!image.naturalWidth)continue;
+    const frames=Math.max(2,Math.min(60,Math.round(Number(item.frames)||5))),animated=item.animated===true&&frames>1,vertical=item.frameDirection==='vertical';
+    const sourceWidth=animated&&!vertical?image.naturalWidth/frames:image.naturalWidth;
+    const sourceHeight=animated&&vertical?image.naturalHeight/frames:image.naturalHeight;
+    let width=item.widthM*PX_PER_M;
+    const baseline=wallTop+item.y*(ground-wallTop),originalHeight=width*sourceHeight/sourceWidth;
+    if(mobileViewport.matches&&item.layer==='behind'){
+      const availableHeight=Math.max(120,baseline-12);
+      if(originalHeight>availableHeight)width*=availableHeight/originalHeight;
+    }
+    const height=width*sourceHeight/sourceWidth,centerX=item.x*PX_PER_M-state.camera;
+    const angle=(Number(item.rotation)||0)*Math.PI/180,cos=Math.cos(angle),sin=Math.sin(angle);
+    const dx=point.screenX-centerX,dy=point.screenY-baseline;
+    const localX=dx*cos+dy*sin,localY=-dx*sin+dy*cos;
+    if(localX>=-width/2&&localX<=width/2&&localY>=-height&&localY<=0)return item.id;
+  }
+  return null;
+}
+
 function drawWallMountedAssets(c,offset,wallTop,ground,now) {
   sceneLayerItems('front').forEach(item=>{if(Number(item.y)<=1)drawSceneItem(c,item,offset,wallTop,ground,now);});
 }
@@ -649,10 +683,8 @@ if (import.meta.env.DEV) {
       saveLocal([]);
       return removed;
     },
-    screenToScene: (clientX, clientY) => {
-      const bands=sceneBands(),wallTop=bands.wallTop,ground=bands.wallBottom;
-      return { x: Math.max(0, Math.min(700, (clientX + state.camera) / PX_PER_M)), y: Math.max(-2.5, Math.min(5, (clientY - wallTop) / (ground - wallTop))) };
-    },
+    screenToScene: (clientX, clientY) => { const point=screenToWorldPoint(clientX,clientY);return {x:Math.max(0,Math.min(700,point.x)),y:Math.max(-2.5,Math.min(5,point.y))}; },
+    pickItemAt: pickSceneItem,
     notify: toast
   }));
 }

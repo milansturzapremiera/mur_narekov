@@ -118,7 +118,7 @@ export function mountSceneEditor(api) {
         <input type="file" accept="image/png,image/jpeg,image/webp">
         <span><b>＋ Pridať grafiku</b><small>PNG, JPG alebo WebP · max. 8 MB</small></span>
       </label>
-      <p class="dev-scene-help">Vyber objekt a klikni do sveta. Ťahaním ho presunieš.</p>
+      <p class="dev-scene-help">Klikni priamo na ktorýkoľvek asset vo svete a potiahni ho. Vybrať a presúvať môžeš aj každú kópiu samostatne.</p>
       <label class="dev-object-search"><span>Hľadať objekt</span><output data-object-count></output><input type="search" placeholder="Strom, lampa, budova…"></label>
       <div class="dev-scene-list" aria-label="Objekty v scéne"></div>
     </section>
@@ -266,8 +266,10 @@ export function mountSceneEditor(api) {
   function renderList() {
     list.replaceChildren();
     const roots = items.filter(item => !item.generatedFrom);
+    const ordered = roots.flatMap(root => [root, ...items.filter(item => item.generatedFrom === root.id)]);
+    ordered.push(...items.filter(item => item.generatedFrom && !items.some(root => root.id === item.generatedFrom)));
     const query = objectSearch.value.trim().toLocaleLowerCase('sk');
-    const visible = query ? roots.filter(item => item.name.toLocaleLowerCase('sk').includes(query)) : roots;
+    const visible = query ? ordered.filter(item => item.name.toLocaleLowerCase('sk').includes(query)) : ordered;
     const copyCount = items.length - roots.length;
     objectCount.textContent = copyCount ? `${roots.length} + ${copyCount} kópií` : `${roots.length} objektov`;
     if (!visible.length) {
@@ -280,6 +282,7 @@ export function mountSceneEditor(api) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'dev-scene-item';
+        button.classList.toggle('is-copy', Boolean(item.generatedFrom));
         button.dataset.id = item.id;
         button.setAttribute('aria-pressed', String(item.id === selectedId));
         const image = document.createElement('img'); image.src = item.src; image.alt = '';
@@ -287,7 +290,7 @@ export function mountSceneEditor(api) {
         const name = document.createElement('b'); name.textContent = item.name;
         const meta = document.createElement('small');
         const generated = items.filter(candidate => candidate.generatedFrom === item.id).length;
-        meta.textContent = `${item.layer === 'behind' ? 'ZA' : 'PRED'} · ${Number(item.x).toFixed(1)} m${generated ? ` · +${generated} KÓPIÍ` : ''}${item.animated ? ` · ${item.frames || 5}F/${item.fps || 6}FPS` : ''}`;
+        meta.textContent = `${item.generatedFrom ? 'KÓPIA · ' : ''}${item.layer === 'behind' ? 'ZA' : 'PRED'} · ${Number(item.x).toFixed(1)} m${generated ? ` · +${generated} KÓPIÍ` : ''}${item.animated ? ` · ${item.frames || 5}F/${item.fps || 6}FPS` : ''}`;
         copy.append(name, meta); button.append(image, copy); list.append(button);
       });
     }
@@ -308,6 +311,7 @@ export function mountSceneEditor(api) {
     trigger.setAttribute('aria-expanded', String(open));
     trigger.innerHTML = open ? '<span>DEV</span> Zavrieť' : '<span>DEV</span> Editor';
     trigger.setAttribute('aria-label',open ? 'Zavrieť DEV editor' : 'Otvoriť DEV editor');
+    document.documentElement.classList.toggle('dev-scene-editing', open);
     api.setEditing(open);
     if (open) {
       updateGraffitiCount();
@@ -481,17 +485,29 @@ export function mountSceneEditor(api) {
     } catch (error) { saveButton.disabled = false; setStatus(error.message, 'error'); }
   });
 
+  let dragOffset = { x: 0, y: 0 };
   function place(event) {
     const item = selected(); if (!open || !item) return;
     const point = api.screenToScene(event.clientX, event.clientY);
-    item.x = Number(point.x.toFixed(2)); item.y = Number(point.y.toFixed(3));
-    syncGenerated(item, ['y']);
-    fillForm(); renderList(); markDirty();
+    item.x = Number(clamp(point.x + dragOffset.x, 0, 700).toFixed(2));
+    item.y = Number(clamp(point.y + dragOffset.y, -2.5, 5).toFixed(3));
+    fillForm(); markDirty();
   }
-  api.canvas.addEventListener('pointerdown', event => { if (!open || !selected()) return; dragging = true; api.canvas.setPointerCapture(event.pointerId); place(event); });
+  api.canvas.addEventListener('pointerdown', event => {
+    if (!open) return;
+    const hitId = api.pickItemAt(event.clientX, event.clientY);
+    if (hitId) choose(hitId);
+    const item = selected(); if (!item) return;
+    const point = api.screenToScene(event.clientX, event.clientY);
+    dragOffset = hitId ? { x: item.x - point.x, y: item.y - point.y } : { x: 0, y: 0 };
+    dragging = true;
+    document.documentElement.classList.add('dev-scene-dragging');
+    api.canvas.setPointerCapture(event.pointerId);
+    if (!hitId) place(event);
+  });
   api.canvas.addEventListener('pointermove', event => { if (dragging) place(event); });
-  api.canvas.addEventListener('pointerup', () => { dragging = false; });
-  api.canvas.addEventListener('pointercancel', () => { dragging = false; });
+  api.canvas.addEventListener('pointerup', () => { if (dragging) renderList(); dragging = false; document.documentElement.classList.remove('dev-scene-dragging'); });
+  api.canvas.addEventListener('pointercancel', () => { if (dragging) renderList(); dragging = false; document.documentElement.classList.remove('dev-scene-dragging'); });
 
   addEventListener('keydown', event => {
     if (event.key === 'Escape' && open) selectedId ? choose(null) : toggle(false);
