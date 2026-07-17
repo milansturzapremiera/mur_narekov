@@ -389,6 +389,7 @@ function sceneLayerItems(layer) {
 }
 
 function drawSceneItem(c, item, offset, wallTop, ground, now) {
+    if (mobileViewport.matches && item.src.includes('1784285163468-duha')) return;
     const image = sceneImage(item.src);
     let width = item.widthM * PX_PER_M;
     if (!image.complete || !image.naturalWidth) return;
