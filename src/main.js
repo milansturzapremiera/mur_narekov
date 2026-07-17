@@ -38,6 +38,7 @@ const MESSAGE_LIMIT = 20;
 const DEV_RUN_MULTIPLIER = import.meta.env.DEV ? 5 : 1;
 function storedValue(key) { try { return localStorage.getItem(key); } catch { return null; } }
 function storeValue(key,value) { try { localStorage.setItem(key,value); } catch {} }
+function removeStoredValue(key) { try { localStorage.removeItem(key); } catch {} }
 function getVisitorId() {
   const stored = storedValue(VISITOR_KEY);
   if (stored && /^[a-z0-9-]{16,128}$/i.test(stored)) return stored;
@@ -524,7 +525,7 @@ function updateWriteAccess() {
 
 async function loadWorld(){
   state.graffiti=localItems();
-  try{const r=await fetch('/api/graffiti',{headers:{'X-Writer-Id':visitorId}});if(!r.ok)throw 0;const data=await r.json();state.mode='shared';state.graffiti=data.items;state.hasWritten=WRITE_LIMIT_ENABLED&&(state.hasWritten||data.hasWritten);if(state.hasWritten)storeValue(WRITTEN_KEY,'1');$('#statusText').textContent='spoločná stena';$('#statusDot').classList.add('online');if(!state.hasWritten)$('#editorNote').textContent=WRITE_LIMIT_ENABLED?'Máš jeden odkaz. Po uložení ho uvidia aj ďalší návštevníci.':'DEV režim: odkazy môžeš pridávať bez obmedzenia.';}catch{$('#statusText').textContent='lokálna stena';}finally{updateWriteAccess();}
+  try{const r=await fetch('/api/graffiti',{headers:{'X-Writer-Id':visitorId}});if(!r.ok)throw 0;const data=await r.json();state.mode='shared';state.graffiti=data.items;state.hasWritten=WRITE_LIMIT_ENABLED&&Boolean(data.hasWritten);if(state.hasWritten)storeValue(WRITTEN_KEY,'1');else removeStoredValue(WRITTEN_KEY);$('#statusText').textContent='spoločná stena';$('#statusDot').classList.add('online');if(!state.hasWritten)$('#editorNote').textContent=WRITE_LIMIT_ENABLED?'Máš jeden odkaz. Po uložení ho uvidia aj ďalší návštevníci.':'DEV režim: odkazy môžeš pridávať bez obmedzenia.';}catch{$('#statusText').textContent='lokálna stena';}finally{updateWriteAccess();}
 }
 loadWorld();
 channel?.addEventListener('message',e=>{if(e.data.type==='graffiti')state.graffiti=e.data.items;if(e.data.type==='presence')state.others=e.data.players;if(WRITE_LIMIT_ENABLED&&e.data.type==='written'){state.hasWritten=true;if(state.edit)closeEditor();updateWriteAccess();}});
