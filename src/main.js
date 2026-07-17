@@ -61,7 +61,6 @@ const channel = 'BroadcastChannel' in window ? new BroadcastChannel('mur-narekov
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const mobileViewport = matchMedia('(max-width: 760px)');
 const playerScreenX = () => innerWidth * (mobileViewport.matches ? .5 : .38);
-const sceneObjectScale = () => mobileViewport.matches ? Math.max(.28, Math.min(.55, innerWidth / 1440)) : 1;
 
 document.querySelector('#app').innerHTML = `
   <main id="game" aria-label="Múr nárekov, interaktívna prechádzka">
@@ -391,7 +390,7 @@ function sceneLayerItems(layer) {
 
 function drawSceneItem(c, item, offset, wallTop, ground, now) {
     const image = sceneImage(item.src);
-    const width = item.widthM * PX_PER_M * sceneObjectScale();
+    let width = item.widthM * PX_PER_M;
     if (!image.complete || !image.naturalWidth) return;
     const frames = Math.max(2, Math.min(60, Math.round(Number(item.frames) || 5)));
     const animated = item.animated === true && frames > 1;
@@ -405,9 +404,14 @@ function drawSceneItem(c, item, offset, wallTop, ground, now) {
     const sourceY = animated && vertical ? frame * sourceHeight : 0;
     const displaySourceWidth = animated ? sourceWidth : image.naturalWidth;
     const displaySourceHeight = animated ? sourceHeight : image.naturalHeight;
+    const baseline = wallTop + item.y * (ground - wallTop);
+    const originalHeight = width * displaySourceHeight / displaySourceWidth;
+    if (mobileViewport.matches && item.layer === 'behind') {
+      const availableHeight = Math.max(120, baseline - 12);
+      if (originalHeight > availableHeight) width *= availableHeight / originalHeight;
+    }
     const height = width * displaySourceHeight / displaySourceWidth, x = item.x * PX_PER_M - offset;
     if (x + width / 2 < 0 || x - width / 2 > innerWidth) return;
-    const baseline = wallTop + item.y * (ground - wallTop);
     c.save(); c.translate(x, baseline); c.rotate(item.rotation * Math.PI / 180);
     c.drawImage(image, sourceX, sourceY, displaySourceWidth, displaySourceHeight, -width / 2, -height, width, height);
     if (import.meta.env.DEV && state.sceneEditing && item.id === state.selectedSceneId) {
@@ -490,7 +494,7 @@ function render(now) {
   const depthScale=lane=>Math.max(.65,Math.min(1.18,basePlayerScale*(.78+lane*.28)));
   const playerX=state.x*PX_PER_M-off,playerBaseline=baselineFor(state.lane),playerScale=depthScale(state.lane);
   const foreground=[];
-  sceneLayerItems('front').forEach(item=>{if(Number(item.y)<=1)return;const width=item.widthM*PX_PER_M*sceneObjectScale(),x=item.x*PX_PER_M-off;if(x+width/2<0||x-width/2>innerWidth)return;foreground.push({y:wallTop+item.y*(ground-wallTop),draw:()=>drawSceneItem(ctx,item,off,wallTop,ground,now)});});
+  sceneLayerItems('front').forEach(item=>{if(Number(item.y)<=1)return;const width=item.widthM*PX_PER_M,x=item.x*PX_PER_M-off;if(x+width/2<0||x-width/2>innerWidth)return;foreground.push({y:wallTop+item.y*(ground-wallTop),draw:()=>drawSceneItem(ctx,item,off,wallTop,ground,now)});});
   foreground.push({y:playerBaseline,draw:()=>{drawPerson(ctx,playerX,playerBaseline,playerScale,state,state.velocity/3.2,state.stride,movementEnergy);drawNameLabel(ctx,playerX,playerBaseline,playerScale,state.name,state.nameColor);}});
   state.others.filter(p=>p.id!==uid).forEach(p=>{const x=p.x*PX_PER_M-off;if(x>-100&&x<innerWidth+100){const baseline=baselineFor(.5),scale=depthScale(.5);foreground.push({y:baseline,draw:()=>{drawPerson(ctx,x,baseline,scale,{...p,dir:p.dir||1},0,0);drawNameLabel(ctx,x,baseline,scale,p.name,p.nameColor);}});}});
   foreground.sort((a,b)=>a.y-b.y).forEach(entry=>entry.draw());
