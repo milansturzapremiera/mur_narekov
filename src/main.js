@@ -242,6 +242,10 @@ applyTrack(currentTrack);
 updateMusicUI();
 let selectedFont = FONTS[0][1], selectedColor = '#f2e8d5', selectedSize = 32, selectedWrap = false, dpr = 1, skyGradient = null, skyGlow = null;
 const sceneImages = new Map();
+const sceneImageQueue = [];
+const networkInfo = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+const sceneImageConcurrency = networkInfo?.saveData || /(^|-)2g$/.test(networkInfo?.effectiveType || '') ? 2 : mobileViewport.matches ? 3 : 4;
+let activeSceneImageLoads = 0, sceneImagePumpScheduled = false;
 const wallSegmentImage = new Image();
 const wallPillarImage = new Image();
 const lowWallImage = new Image();
@@ -369,14 +373,41 @@ function drawSky(c,offset) {
   for(let repeat=-1;repeat<=1;repeat++)CLOUD_BANKS.forEach(cloud=>cloudShape(c,cloud.x+repeat*2600-drift,innerHeight*cloud.y,cloud.w,cloud.h,cloud.a));
 }
 
-function sceneImage(src) {
-  if (!sceneImages.has(src)) {
-    const image = new Image();
-    image.decoding = 'async';
-    image.src = src;
-    sceneImages.set(src, image);
+function pumpSceneImageQueue() {
+  sceneImageQueue.sort((a,b)=>a.priority-b.priority);
+  while(activeSceneImageLoads<sceneImageConcurrency&&sceneImageQueue.length){
+    const record=sceneImageQueue.shift();
+    if(record.status!=='queued')continue;
+    record.status='loading';activeSceneImageLoads++;
+    record.image.fetchPriority=record.priority<=innerWidth?'high':'low';
+    const settle=status=>{if(record.status!=='loading')return;record.status=status;activeSceneImageLoads--;pumpSceneImageQueue();};
+    record.image.onload=()=>settle('loaded');record.image.onerror=()=>settle('error');record.image.src=record.src;
   }
-  return sceneImages.get(src);
+}
+
+function scheduleSceneImagePump() {
+  if(sceneImagePumpScheduled)return;
+  sceneImagePumpScheduled=true;
+  queueMicrotask(()=>{sceneImagePumpScheduled=false;pumpSceneImageQueue();});
+}
+
+function sceneImage(src,priority=Infinity) {
+  let record=sceneImages.get(src);
+  if(!record){
+    const image=new Image();image.decoding='async';
+    record={src,image,status:'queued',priority};sceneImages.set(src,record);sceneImageQueue.push(record);scheduleSceneImagePump();
+  }else if(record.status==='queued'&&priority<record.priority){record.priority=priority;scheduleSceneImagePump();}
+  return record.image;
+}
+
+function loadedSceneImage(src) {
+  const record=sceneImages.get(src);
+  return record?.status==='loaded'?record.image:null;
+}
+
+function scenePreloadPadding() {
+  if(networkInfo?.saveData||/(^|-)2g$/.test(networkInfo?.effectiveType||''))return Math.max(innerWidth*.5,20*PX_PER_M);
+  return Math.max(innerWidth,mobileViewport.matches?35*PX_PER_M:48*PX_PER_M);
 }
 
 let sceneLayerCacheSource=null,sceneLayerCache={behind:[],front:[]};
@@ -390,8 +421,11 @@ function sceneLayerItems(layer) {
 
 function drawSceneItem(c, item, offset, wallTop, ground, now) {
     if (mobileViewport.matches && item.src.includes('1784285163468-duha')) return;
-    const image = sceneImage(item.src);
     let width = item.widthM * PX_PER_M;
+    const x = item.x * PX_PER_M - offset;
+    const distanceFromViewport=x+width/2<0?-(x+width/2):x-width/2>innerWidth?x-width/2-innerWidth:0;
+    if(distanceFromViewport>scenePreloadPadding())return;
+    const image = sceneImage(item.src,distanceFromViewport);
     if (!image.complete || !image.naturalWidth) return;
     const frames = Math.max(2, Math.min(60, Math.round(Number(item.frames) || 5)));
     const animated = item.animated === true && frames > 1;
@@ -411,7 +445,7 @@ function drawSceneItem(c, item, offset, wallTop, ground, now) {
       const availableHeight = Math.max(120, baseline - 12);
       if (originalHeight > availableHeight) width *= availableHeight / originalHeight;
     }
-    const height = width * displaySourceHeight / displaySourceWidth, x = item.x * PX_PER_M - offset;
+    const height = width * displaySourceHeight / displaySourceWidth;
     if (x + width / 2 < 0 || x - width / 2 > innerWidth) return;
     c.save(); c.translate(x, baseline); c.rotate(item.rotation * Math.PI / 180);
     c.drawImage(image, sourceX, sourceY, displaySourceWidth, displaySourceHeight, -width / 2, -height, width, height);
@@ -442,7 +476,7 @@ function pickSceneItem(clientX,clientY) {
   for(const item of [...foreground,...wallItems,...behind]){
     if(mobileViewport.matches&&item.src.includes('1784285163468-duha'))continue;
     if(item.layer==='behind'&&point.screenY>wallTop)continue;
-    const image=sceneImage(item.src);if(!image.complete||!image.naturalWidth)continue;
+    const image=loadedSceneImage(item.src);if(!image)continue;
     const frames=Math.max(2,Math.min(60,Math.round(Number(item.frames)||5))),animated=item.animated===true&&frames>1,vertical=item.frameDirection==='vertical';
     const sourceWidth=animated&&!vertical?image.naturalWidth/frames:image.naturalWidth;
     const sourceHeight=animated&&vertical?image.naturalHeight/frames:image.naturalHeight;
