@@ -91,8 +91,8 @@ document.querySelector('#app').innerHTML = `
     </div>
     <button class="write-button" id="writeButton" type="button"><span>＋</span> Zanechať odkaz</button>
     <div class="touch-controls" aria-label="Pohyb po chodníku">
-      <button class="touch-direction touch-left" data-move-x="-1" aria-label="Kráčať doľava"><span aria-hidden="true">←</span></button>
-      <button class="touch-direction touch-right" data-move-x="1" aria-label="Kráčať doprava"><span aria-hidden="true">→</span></button>
+      <button class="touch-direction touch-left" data-move-x="-1" aria-label="Kráčať doľava"></button>
+      <button class="touch-direction touch-right" data-move-x="1" aria-label="Kráčať doprava"></button>
       <div class="touch-zoom" aria-label="Priblíženie múru">
         <button data-zoom="-0.15" type="button" aria-label="Oddialiť múr">−</button>
         <output data-zoom-value aria-live="polite">100%</output>
@@ -541,7 +541,7 @@ $('#characterForm').addEventListener('submit',e=>{e.preventDefault();startMusic(
 addEventListener('keydown',e=>{if(e.target.matches?.('input, textarea, select')||e.target.isContentEditable)return;const key=e.key.length===1?e.key.toLowerCase():e.key;if(e.key==='Shift'&&!state.edit&&!state.sceneEditing){e.preventDefault();state.running=true;}if(['ArrowLeft','ArrowRight','a','d'].includes(key)&&!state.edit){e.preventDefault();state.keys.add(key);}});
 addEventListener('keyup',e=>{const key=e.key.length===1?e.key.toLowerCase():e.key;if(e.key==='Shift')state.running=false;state.keys.delete(key);});
 addEventListener('blur',()=>{state.running=false;state.keys.clear();state.moving=0;});
-document.querySelectorAll('[data-move-x]').forEach(b=>{const end=()=>state.moving=0;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);state.moving=Number(b.dataset.moveX)});b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);b.addEventListener('lostpointercapture',end);});
+document.querySelectorAll('[data-move-x]').forEach(b=>{const end=()=>state.moving=0;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);state.moving=Number(b.dataset.moveX)});b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);b.addEventListener('lostpointercapture',end);b.addEventListener('contextmenu',e=>e.preventDefault());b.addEventListener('selectstart',e=>e.preventDefault());b.addEventListener('dragstart',e=>e.preventDefault());});
 document.querySelectorAll('[data-run]').forEach(button=>{const set=value=>{state.running=value;button.setAttribute('aria-pressed',String(value));};button.addEventListener('pointerdown',e=>{e.preventDefault();button.setPointerCapture(e.pointerId);set(true)});button.addEventListener('pointerup',()=>set(false));button.addEventListener('pointercancel',()=>set(false));button.addEventListener('lostpointercapture',()=>set(false));});
 function setZoom(value){state.targetZoom=Math.max(1,Math.min(1.6,value));document.querySelectorAll('[data-zoom-value]').forEach(output=>{output.textContent=`${Math.round(state.targetZoom*100)}%`;});document.querySelectorAll('[data-zoom]').forEach(button=>{const next=state.targetZoom+Number(button.dataset.zoom);button.disabled=next<.99||next>1.61;});}
 document.querySelectorAll('[data-zoom]').forEach(button=>button.addEventListener('click',()=>setZoom(state.targetZoom+Number(button.dataset.zoom))));
