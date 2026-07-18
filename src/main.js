@@ -139,7 +139,13 @@ document.querySelector('#app').innerHTML = `
         <fieldset><legend><span data-landing="nameLegend"></span> <small data-landing="nameOptional"></small></legend><div class="identity-row"><label for="playerName"><span data-landing="nameLabel"></span><input id="playerName" name="playerName" maxlength="16" autocomplete="nickname" data-landing-placeholder="namePlaceholder"></label><label for="playerNameColor"><span data-landing="colorLabel"></span><input id="playerNameColor" name="playerNameColor" type="color" value="#f0c849"></label></div></fieldset>
         <button type="submit" class="enter-button"><span data-landing="submitButton"></span><span>→</span></button>
       </form>
-      <p class="entry-foot" data-landing="footer"></p>
+      <footer class="entry-footer">
+        <p class="entry-foot" data-landing="footer"></p>
+        <a class="entry-instagram" href="https://www.instagram.com/lazy_carpathian_dev/" target="_blank" rel="noopener noreferrer" aria-label="Instagram Lazy Carpathian Dev">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4.25"></circle><circle class="entry-instagram-dot" cx="17.4" cy="6.7" r="1"></circle></svg>
+          <span>Lazy Carpathian Dev</span>
+        </a>
+      </footer>
     </section>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </main>`;

@@ -1,0 +1,17 @@
+{
+  "name": "Múr nárekov",
+  "short_name": "Múr nárekov",
+  "description": "700 metrov spoločnej digitálnej steny.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#b9b29f",
+  "theme_color": "#b9b29f",
+  "icons": [
+    {
+      "src": "/web-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
