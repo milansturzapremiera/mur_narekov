@@ -4,6 +4,8 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 const SCENE_FILE = path.join(ROOT, 'src', 'data', 'scene.json');
+const LIGHTS_FILE = path.join(ROOT, 'src', 'data', 'lights.json');
+const EVENTS_FILE = path.join(ROOT, 'src', 'data', 'events.json');
 const TERRAIN_FILE = path.join(ROOT, 'src', 'data', 'terrain.json');
 const LANDING_FILE = path.join(ROOT, 'src', 'data', 'landing.json');
 const ASSET_DIR = path.join(ROOT, 'public', 'assets', 'scene');
@@ -48,6 +50,7 @@ function cleanSceneItem(item) {
     name: String(item.name || 'Objekt').trim().slice(0, 60),
     src: source.slice(0, 240),
     layer: item.layer === 'behind' ? 'behind' : 'front',
+    visibility: ['day','night'].includes(item.visibility) ? item.visibility : 'always',
     x: Math.max(0, Math.min(700, Number(item.x) || 0)),
     y: Math.max(-2.5, Math.min(5, Number(item.y) || 0)),
     widthM: Math.max(.2, Math.min(100, Number(item.widthM) || 2)),
@@ -59,6 +62,33 @@ function cleanSceneItem(item) {
     phase: Math.max(0, Math.min(1, Number(item.phase) || 0)),
     ...(item.generatedFrom ? { generatedFrom: String(item.generatedFrom).slice(0, 80) } : {})
   };
+}
+
+function cleanLight(light) {
+  const number=(key,fallback,min,max)=>{const value=Number(light[key]);return Number.isFinite(value)?Math.max(min,Math.min(max,value)):fallback;};
+  return {
+    id:String(light.id||'').slice(0,80),name:String(light.name||'Svetlo').trim().slice(0,60),
+    x:number('x',0,0,700),y:number('y',-.4,-3,5),offsetX:number('offsetX',0,-50,50),offsetY:number('offsetY',0,-50,50),
+    angle:number('angle',0,-180,180),lengthM:number('lengthM',10,1,30),widthM:number('widthM',7,.5,20),softness:number('softness',.72,0,1),haloM:number('haloM',2.4,.2,8),
+    intensity:number('intensity',1,.05,2),color:/^#[0-9a-f]{6}$/i.test(String(light.color||''))?String(light.color).toLowerCase():'#ffd080',
+    flicker:light.flicker===true,...(light.lampId?{lampId:String(light.lampId).slice(0,80)}:{}),...(light.generatedFrom?{generatedFrom:String(light.generatedFrom).slice(0,80)}:{})
+  };
+}
+
+function cleanEvent(event) {
+  const number=(key,fallback,min,max)=>{const value=Number(event[key]);return Number.isFinite(value)?Math.max(min,Math.min(max,value)):fallback;};
+  const common={id:String(event.id||'').slice(0,80),name:String(event.name||'Event').trim().slice(0,60),type:event.type==='text'?'text':'walker',visibility:['day','night'].includes(event.visibility)?event.visibility:'always',startAt:/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(String(event.startAt||''))?String(event.startAt):'',startDelaySec:number('startDelaySec',0,0,86400)};
+  if(common.type==='text'){
+    const bubblesPerSequence=Math.round(number('bubblesPerSequence',1,1,20)),sequenceCount=Math.round(number('sequenceCount',1,1,50));
+    const legacy=(Array.isArray(event.messages)?event.messages:[]).map(value=>String(value).trim().slice(0,160)).slice(0,1000),requestedSequences=Array.isArray(event.sequences)?event.sequences:[];
+    const total=sequenceCount,sequences=Array.from({length:total},(_,sequenceIndex)=>Array.from({length:bubblesPerSequence},(_,bubbleIndex)=>{
+      const value=requestedSequences[sequenceIndex]?.[bubbleIndex]??legacy[(sequenceIndex*bubblesPerSequence+bubbleIndex)%Math.max(1,legacy.length)]??'';return String(value).trim().slice(0,160);
+    }));
+    return{...common,x:number('x',0,0,700),y:number('y',-.2,-3,5),messages:sequences.flat(),sequences,bubblesPerSequence,sequenceCount,repeatEvent:event.repeatEvent!==false,bubbleIntervalSec:number('bubbleIntervalSec',3,.2,3600),bubbleDurationSec:number('bubbleDurationSec',2.5,.5,120),repeatEverySec:number('repeatEverySec',15,.5,86400),widthM:number('widthM',5,2,14),fontSize:number('fontSize',20,12,42),textColor:/^#[0-9a-f]{6}$/i.test(String(event.textColor||''))?String(event.textColor).toLowerCase():'#25211d',backgroundColor:/^#[0-9a-f]{6}$/i.test(String(event.backgroundColor||''))?String(event.backgroundColor).toLowerCase():'#f2eadb'};
+  }
+  const src=String(event.src||'');if(!src.startsWith('/assets/scene/'))throw new Error('Event asset musí byť uložený v scéne.');
+  const pathY=Number(event.pathY);
+  return{...common,src:src.slice(0,240),widthM:number('widthM',3,.2,30),startX:number('startX',0,0,700),endX:number('endX',700,0,700),...(Number.isFinite(pathY)?{pathY:Math.max(-3,Math.min(5,pathY))}:{}),lane:number('lane',.5,0,1),speedMps:number('speedMps',4,.2,30),direction:event.direction==='left'?'left':'right',loopDelaySec:number('loopDelaySec',10,0,3600),runCount:Math.round(number('runCount',0,0,1000)),animated:event.animated===true,frames:Math.round(number('frames',5,2,60)),fps:number('fps',6,.5,30),frameDirection:event.frameDirection==='vertical'?'vertical':'horizontal',speechEnabled:event.speechEnabled===true,speechMessages:(Array.isArray(event.speechMessages)?event.speechMessages:[]).map(value=>String(value).trim().slice(0,160)).filter(Boolean).slice(0,20),speechDelaySec:number('speechDelaySec',2,0,3600),speechEverySec:number('speechEverySec',12,1,3600),speechDurationSec:number('speechDurationSec',3,.5,30),speechWidthM:number('speechWidthM',5,2,14),speechFontSize:Math.round(number('speechFontSize',20,12,42)),speechTextColor:/^#[0-9a-f]{6}$/i.test(String(event.speechTextColor||''))?String(event.speechTextColor).toLowerCase():'#25211d',speechBackgroundColor:/^#[0-9a-f]{6}$/i.test(String(event.speechBackgroundColor||''))?String(event.speechBackgroundColor).toLowerCase():'#f2eadb'};
 }
 
 function cleanTerrain(value = {}) {
@@ -146,14 +176,20 @@ function sceneEditorPlugin() {
           if (pathname === '/__scene-editor/save') {
             const body = await readJson(req, 1024 * 1024);
             if (!Array.isArray(body.items) || body.items.length > 1000) throw new Error('Scéna obsahuje priveľa objektov.');
+            if (!Array.isArray(body.lights) || body.lights.length > 1000) throw new Error('Scéna obsahuje priveľa svetiel.');
+            if (!Array.isArray(body.events) || body.events.length > 500) throw new Error('Scéna obsahuje priveľa eventov.');
             const items = body.items.map(cleanSceneItem);
+            const lights = body.lights.map(cleanLight);
+            const events = body.events.map(cleanEvent);
             const terrain = cleanTerrain(body.terrain);
             const landing = cleanLanding(body.landing);
             await mkdir(path.dirname(SCENE_FILE), { recursive: true });
             await writeFile(SCENE_FILE, `${JSON.stringify(items, null, 2)}\n`, 'utf8');
+            await writeFile(LIGHTS_FILE, `${JSON.stringify(lights, null, 2)}\n`, 'utf8');
+            await writeFile(EVENTS_FILE, `${JSON.stringify(events, null, 2)}\n`, 'utf8');
             await writeFile(TERRAIN_FILE, `${JSON.stringify(terrain, null, 2)}\n`, 'utf8');
             await writeFile(LANDING_FILE, `${JSON.stringify(landing, null, 2)}\n`, 'utf8');
-            return json(res, 200, { saved: items.length });
+            return json(res, 200, { saved: items.length, lights: lights.length, events: events.length });
           }
 
           return json(res, 404, { error: 'Neznáma editorová operácia.' });

@@ -1,0 +1,255 @@
+[
+  {
+    "id": "aecb488c-141d-4f99-bb99-269bf5f7be25",
+    "name": "Textová bublina",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 10,
+    "x": 42.59,
+    "y": 0.735,
+    "messages": [
+      "Vitaj zomríča..."
+    ],
+    "sequences": [
+      [
+        "Vitaj zomríča..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 1,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 10,
+    "widthM": 6.5,
+    "fontSize": 35,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "573dda85-dfed-4bf3-ae77-4b0a648142e6",
+    "name": "Baf",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 115.15,
+    "y": 0.958,
+    "messages": [
+      "Baf",
+      "Haf",
+      "Šimečková manka!"
+    ],
+    "sequences": [
+      [
+        "Baf"
+      ],
+      [
+        "Haf"
+      ],
+      [
+        "Šimečková manka!"
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 3,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 0.2,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 5,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "b400fb75-470a-4233-984e-7c2409c2dbf0",
+    "name": "kokot",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 71.24,
+    "y": 1.003,
+    "messages": [
+      "Kokot..."
+    ],
+    "sequences": [
+      [
+        "Kokot..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 1,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 1,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 12,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "df70bf9c-fc40-4050-9baf-5db7c59139d7",
+    "name": "kokot kópia",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 279.01,
+    "y": 0.963,
+    "messages": [
+      "Musí už ebať riadne..."
+    ],
+    "sequences": [
+      [
+        "Musí už ebať riadne..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 1,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 1,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 12,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "dcff56ce-997a-4094-b348-fb453ad8019a",
+    "name": "Baf kópia",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 331.39,
+    "y": 0.953,
+    "messages": [
+      "Baf",
+      "Haf",
+      "Šimečková manka!"
+    ],
+    "sequences": [
+      [
+        "Baf"
+      ],
+      [
+        "Haf"
+      ],
+      [
+        "Šimečková manka!"
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 3,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 0.2,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 5,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "2b7d4cc3-837f-4d59-823d-314beb103427",
+    "name": "kokot kópia kópia",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 280.01,
+    "y": 0.963,
+    "messages": [
+      "Musí už ebať riadne..."
+    ],
+    "sequences": [
+      [
+        "Musí už ebať riadne..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 1,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 1,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 12,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "c65cdee8-d568-4939-8712-1fbb741c11b8",
+    "name": "Baf kópia kópia",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 73.82,
+    "y": 0.914,
+    "messages": [
+      "Baf",
+      "Haf",
+      "Šimečková manka!"
+    ],
+    "sequences": [
+      [
+        "Baf"
+      ],
+      [
+        "Haf"
+      ],
+      [
+        "Šimečková manka!"
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 3,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 0.2,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 5,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "ded144f0-3b0c-423b-9c99-e2e89038147f",
+    "name": "huli",
+    "type": "walker",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "src": "/assets/scene/1784399759715-event-huli.png",
+    "widthM": 4.1,
+    "startX": 16,
+    "endX": 699.4,
+    "pathY": 1.228,
+    "lane": 0.5,
+    "speedMps": 4,
+    "direction": "left",
+    "loopDelaySec": 0,
+    "runCount": 0,
+    "animated": true,
+    "frames": 5,
+    "fps": 6,
+    "frameDirection": "horizontal",
+    "speechEnabled": false,
+    "speechMessages": [
+      "Ahoj!"
+    ],
+    "speechDelaySec": 2,
+    "speechEverySec": 12,
+    "speechDurationSec": 3,
+    "speechWidthM": 5,
+    "speechFontSize": 20,
+    "speechTextColor": "#25211d",
+    "speechBackgroundColor": "#f2eadb"
+  }
+]

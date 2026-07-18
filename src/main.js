@@ -2,6 +2,8 @@ import './style.css';
 import initialScene from './data/scene.json';
 import initialTerrain from './data/terrain.json';
 import initialLanding from './data/landing.json';
+import initialLights from './data/lights.json';
+import initialEvents from './data/events.json';
 
 const FONTS = [
   ['Impact', 'Impact, Haettenschweiler, sans-serif'], ['Krieda', '"Comic Sans MS", cursive'],
@@ -36,6 +38,15 @@ const TRACKS = [
 const WRITE_LIMIT_ENABLED = !import.meta.env.DEV;
 const MESSAGE_LIMIT = 20;
 const DEV_RUN_MULTIPLIER = import.meta.env.DEV ? 5 : 1;
+const NIGHT_LAMP_SRC = '/assets/scene/lampa_noc.png';
+const isLampItem = item => String(item?.name||'').toLocaleLowerCase('sk').startsWith('lampa') || String(item?.src||'').toLowerCase().includes('lampa');
+function automaticNightAmount(date = new Date()) {
+  const hour = date.getHours() + date.getMinutes() / 60;
+  if (hour >= 20 || hour < 5.5) return 1;
+  if (hour >= 18) return (hour - 18) / 2;
+  if (hour < 7.5) return (7.5 - hour) / 2;
+  return 0;
+}
 function storedValue(key) { try { return localStorage.getItem(key); } catch { return null; } }
 function storeValue(key,value) { try { localStorage.setItem(key,value); } catch {} }
 function removeStoredValue(key) { try { localStorage.removeItem(key); } catch {} }
@@ -50,13 +61,15 @@ const state = {
   started: false, running: false, x: 0, lane: .5, camera: 0, dir: 1, moving: 0, velocity: 0, stride: 0, zoom: 1, targetZoom: 1,
   skin: 'tan', name: '', nameColor: '#f0c849',
   graffiti: [], others: [], edit: false, targetY: .5, targetX: 0, positionU: .5, section: 0, angle: 0,
-  sceneItems: structuredClone(initialScene), selectedSceneId: null, sceneEditing: false,
+  sceneItems: structuredClone(initialScene), lightSources: structuredClone(initialLights), events: structuredClone(initialEvents), selectedSceneId: null, selectedLightId: null, selectedEventId: null, followedEventId: null, followCameraX: null, followCameraSnap: false, editorLayer: 'assets', sceneEditing: false,
   terrain: structuredClone(initialTerrain),
   landing: structuredClone(initialLanding),
   hasWritten: WRITE_LIMIT_ENABLED && storedValue(WRITTEN_KEY) === '1', savingGraffiti: false,
-  mode: 'local', keys: new Set(), last: performance.now()
+  mode: 'local', keys: new Set(), last: performance.now(), environmentMode: 'auto', nightMix: automaticNightAmount()
 };
 const uid = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+const EVENT_SESSION_START = Date.now();
+const EVENT_PREVIEW_STARTS = new Map();
 const channel = 'BroadcastChannel' in window ? new BroadcastChannel('mur-narekov') : null;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const mobileViewport = matchMedia('(max-width: 760px)');
@@ -246,7 +259,9 @@ backgroundMusic.addEventListener('pause',updateMusicUI);
 document.addEventListener('keydown',event=>{ if (event.key === 'Escape') setAudioExpanded(false); });
 applyTrack(currentTrack);
 updateMusicUI();
-let selectedFont = FONTS[0][1], selectedColor = '#f2e8d5', selectedSize = 32, selectedWrap = false, dpr = 1, skyGradient = null, skyGlow = null;
+let selectedFont = FONTS[0][1], selectedColor = '#f2e8d5', selectedSize = 32, selectedWrap = false, dpr = 1;
+let daySkyGradient = null, daySkyGlow = null, nightSkyGradient = null, nightSkyGlow = null;
+let lastEnvironmentClockCheck = 0, automaticNightTarget = automaticNightAmount();
 const sceneImages = new Map();
 const sceneImageQueue = [];
 const networkInfo = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -268,10 +283,14 @@ grassImage.src = '/assets/wall/grass.png';
 $('#fontList').innerHTML = FONTS.map((f,i)=>`<label><input type="radio" name="font" value="${i}" ${i?'':'checked'}><span style="font-family:${f[1]}">${f[0]}</span></label>`).join('');
 
 function rebuildSkyPaint() {
-  skyGradient=ctx.createLinearGradient(0,0,0,innerHeight*.72);
-  skyGradient.addColorStop(0,'#87999a');skyGradient.addColorStop(.52,'#b8beb5');skyGradient.addColorStop(1,'#d8c9aa');
-  skyGlow=ctx.createRadialGradient(innerWidth*.78,innerHeight*.19,0,innerWidth*.78,innerHeight*.19,innerWidth*.32);
-  skyGlow.addColorStop(0,'rgba(238,220,174,.36)');skyGlow.addColorStop(1,'rgba(238,220,174,0)');
+  daySkyGradient=ctx.createLinearGradient(0,0,0,innerHeight*.72);
+  daySkyGradient.addColorStop(0,'#87999a');daySkyGradient.addColorStop(.52,'#b8beb5');daySkyGradient.addColorStop(1,'#d8c9aa');
+  daySkyGlow=ctx.createRadialGradient(innerWidth*.78,innerHeight*.19,0,innerWidth*.78,innerHeight*.19,innerWidth*.32);
+  daySkyGlow.addColorStop(0,'rgba(238,220,174,.36)');daySkyGlow.addColorStop(1,'rgba(238,220,174,0)');
+  nightSkyGradient=ctx.createLinearGradient(0,0,0,innerHeight*.72);
+  nightSkyGradient.addColorStop(0,'#111827');nightSkyGradient.addColorStop(.58,'#283245');nightSkyGradient.addColorStop(1,'#51535b');
+  nightSkyGlow=ctx.createRadialGradient(innerWidth*.76,innerHeight*.16,0,innerWidth*.76,innerHeight*.16,innerWidth*.24);
+  nightSkyGlow.addColorStop(0,'rgba(215,219,198,.14)');nightSkyGlow.addColorStop(1,'rgba(215,219,198,0)');
 }
 function resize() {
   const pixelBudget=5_000_000,ideal=Math.sqrt(pixelBudget/Math.max(1,innerWidth*innerHeight));
@@ -364,6 +383,12 @@ const CLOUD_BANKS = [
   {x:80,y:.11,w:420,h:72,a:.22},{x:650,y:.2,w:520,h:86,a:.18},{x:1260,y:.09,w:360,h:64,a:.2},
   {x:1680,y:.25,w:600,h:92,a:.16},{x:2240,y:.15,w:460,h:78,a:.19}
 ];
+const STAR_FIELD = Array.from({length:96},(_,index)=>({
+  x:(index*197.3+(index%7)*83.1)%2600,
+  y:.025+((index*47)%440)/1000,
+  radius:.55+(index%5)*.18,
+  phase:(index*1.73)%(Math.PI*2)
+}));
 
 function cloudShape(c,x,y,w,h,alpha) {
   c.save();c.translate(x,y);c.globalAlpha=alpha;c.fillStyle='#e5e2d7';c.beginPath();
@@ -372,11 +397,141 @@ function cloudShape(c,x,y,w,h,alpha) {
   c.bezierCurveTo(w*.34,h*.42,-w*.34,h*.46,-w*.52,h*.1);c.fill();c.restore();
 }
 
-function drawSky(c,offset) {
-  c.fillStyle=skyGradient;c.fillRect(0,0,innerWidth,innerHeight);
-  c.fillStyle=skyGlow;c.fillRect(0,0,innerWidth,innerHeight*.55);
+function drawSky(c,offset,now) {
+  const night=state.nightMix;
+  c.fillStyle=daySkyGradient;c.fillRect(0,0,innerWidth,innerHeight);
+  c.fillStyle=daySkyGlow;c.fillRect(0,0,innerWidth,innerHeight*.55);
+  if(night>.001){c.save();c.globalAlpha=night;c.fillStyle=nightSkyGradient;c.fillRect(0,0,innerWidth,innerHeight);c.fillStyle=nightSkyGlow;c.fillRect(0,0,innerWidth,innerHeight*.5);c.restore();}
+  if(night>.02){
+    const starDrift=(offset*.018)%2600;c.save();c.fillStyle='#f1ecd8';
+    for(let repeat=-1;repeat<=1;repeat++)STAR_FIELD.forEach(star=>{const x=star.x+repeat*2600-starDrift;if(x<-3||x>innerWidth+3)return;const twinkle=reducedMotion.matches?.82:.72+Math.sin(now*.0015+star.phase)*.18;c.globalAlpha=night*twinkle;c.beginPath();c.arc(x,innerHeight*star.y,star.radius,0,Math.PI*2);c.fill();});
+    c.restore();
+  }
   const drift=(offset*.045)%2600;
-  for(let repeat=-1;repeat<=1;repeat++)CLOUD_BANKS.forEach(cloud=>cloudShape(c,cloud.x+repeat*2600-drift,innerHeight*cloud.y,cloud.w,cloud.h,cloud.a));
+  for(let repeat=-1;repeat<=1;repeat++)CLOUD_BANKS.forEach(cloud=>cloudShape(c,cloud.x+repeat*2600-drift,innerHeight*cloud.y,cloud.w,cloud.h,cloud.a*(1-night*.82)));
+}
+
+function environmentTarget(now) {
+  if(state.environmentMode==='day')return 0;
+  if(state.environmentMode==='night')return 1;
+  if(now-lastEnvironmentClockCheck>30000){lastEnvironmentClockCheck=now;automaticNightTarget=automaticNightAmount();}
+  return automaticNightTarget;
+}
+function visibilityAmount(mode) { return mode==='day'?1-state.nightMix:mode==='night'?state.nightMix:1; }
+
+function drawNightShade(c,amount) {
+  if(amount<=.001)return;
+  c.save();c.globalCompositeOperation='multiply';c.fillStyle=`rgba(20,25,39,${(.46*amount).toFixed(3)})`;c.fillRect(-innerWidth*2,-innerHeight*2,innerWidth*5,innerHeight*5);c.restore();
+}
+
+function lampBulbPoint(item,offset,wallTop,ground) {
+  const image=loadedSceneImage(item.src),ratio=image?.naturalWidth?image.naturalHeight/image.naturalWidth:500/333;
+  const width=item.widthM*PX_PER_M,height=width*ratio,baseline=wallTop+item.y*(ground-wallTop),angle=(Number(item.rotation)||0)*Math.PI/180;
+  const localX=-width*.12,localY=-height*.955,x=item.x*PX_PER_M-offset;
+  return {x:x+localX*Math.cos(angle)-localY*Math.sin(angle),y:baseline+localX*Math.sin(angle)+localY*Math.cos(angle)};
+}
+
+function resolveLightPoint(light,offset,wallTop,ground) {
+  const lamp=light.lampId&&state.sceneItems.find(item=>item.id===light.lampId&&isLampItem(item));
+  if(lamp){const point=lampBulbPoint(lamp,offset,wallTop,ground);return{x:point.x+(Number(light.offsetX)||0)*PX_PER_M,y:point.y+(Number(light.offsetY)||0)*PX_PER_M};}
+  return{x:(Number(light.x)||0)*PX_PER_M-offset,y:wallTop+(Number(light.y)||0)*(ground-wallTop)};
+}
+
+function flickerAmount(light,now) {
+  if(light.flicker!==true)return 1;
+  if(reducedMotion.matches)return .72;
+  const seed=[...String(light.id||'')].reduce((sum,char)=>sum+char.charCodeAt(0),0),step=Math.floor(now/82);
+  const raw=Math.sin((step+seed)*12.9898)*43758.5453,noise=raw-Math.floor(raw);
+  if(noise>.94)return .05;if(noise>.84)return .38;return .9+noise*.1;
+}
+
+function lightStrength(light,now) { return state.nightMix*Math.max(0,Math.min(2,Number(light.intensity)||0))*flickerAmount(light,now); }
+function lampNightFactor(item,now) {
+  return state.lightSources.filter(light=>light.lampId===item.id).reduce((strongest,light)=>Math.max(strongest,lightStrength(light,now)),0);
+}
+function lightRgb(value) { const match=/^#([0-9a-f]{6})$/i.exec(String(value||'')),hex=match?match[1]:'ffd080';return[parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)]; }
+function lightConePath(c,length,width) { c.beginPath();c.moveTo(-7,3);c.quadraticCurveTo(-width*.34,length*.43,-width*.5,length);c.lineTo(width*.5,length);c.quadraticCurveTo(width*.34,length*.43,7,3);c.closePath(); }
+
+function drawLightSources(c,offset,wallTop,ground,now) {
+  if(state.nightMix<=.02)return;
+  c.save();c.globalCompositeOperation='screen';
+  state.lightSources.forEach(light=>{
+    const amount=lightStrength(light,now);if(amount<=.01)return;
+    const point=resolveLightPoint(light,offset,wallTop,ground),angle=(Number(light.angle)||0)*Math.PI/180;
+    if(point.x<-500||point.x>innerWidth+500||point.y<-600||point.y>innerHeight+300)return;
+    const coneLength=Math.max(48,Math.min(1440,(Number(light.lengthM)||10)*PX_PER_M)),coneWidth=Math.max(24,Math.min(960,(Number(light.widthM)||7)*PX_PER_M)),radius=Math.max(10,Math.min(280,(Number(light.haloM)||2.4)*PX_PER_M));
+    const [red,green,blue]=lightRgb(light.color),alpha=Math.min(1.5,amount);
+    const softness=Math.max(0,Math.min(1,Number(light.softness??.72))),layers=softness>.01?Math.max(4,Math.round(4+softness*8)):1;
+    c.save();c.translate(point.x,point.y);c.rotate(angle);
+    for(let layer=0;layer<layers;layer++){
+      const progress=layers===1?1:layer/(layers-1),widthScale=layers===1?1:1-progress*softness*.68,weight=layers===1?1:.055+progress*.075;
+      lightConePath(c,coneLength,coneWidth*widthScale);
+      const exposure=c.createRadialGradient(0,coneLength*.04,2,0,coneLength*.3,coneLength*.92);exposure.addColorStop(0,`rgba(255,250,232,${Math.min(.82,.52*alpha)*weight})`);exposure.addColorStop(.38,`rgba(255,248,224,${Math.min(.58,.34*alpha)*weight})`);exposure.addColorStop(.76,`rgba(255,245,218,${Math.min(.3,.16*alpha)*weight})`);exposure.addColorStop(1,'rgba(255,245,218,0)');c.fillStyle=exposure;c.fill();
+      lightConePath(c,coneLength,coneWidth*widthScale);const beam=c.createRadialGradient(0,0,3,0,coneLength*.34,coneLength*.94);beam.addColorStop(0,`rgba(${red},${green},${blue},${Math.min(.72,.48*alpha)*weight})`);beam.addColorStop(.4,`rgba(${red},${green},${blue},${Math.min(.48,.27*alpha)*weight})`);beam.addColorStop(1,`rgba(${red},${green},${blue},0)`);c.fillStyle=beam;c.fill();
+    }c.restore();
+    c.save();c.translate(point.x,point.y);c.scale(1,1.15);const glow=c.createRadialGradient(0,0,2,0,0,radius);glow.addColorStop(0,`rgba(255,252,235,${Math.min(.98,.82*alpha)})`);glow.addColorStop(.16,`rgba(${red},${green},${blue},${Math.min(.78,.56*alpha)})`);glow.addColorStop(.48,`rgba(${red},${green},${blue},${Math.min(.45,.28*alpha)})`);glow.addColorStop(1,`rgba(${red},${green},${blue},0)`);c.fillStyle=glow;c.beginPath();c.arc(0,0,radius,0,Math.PI*2);c.fill();c.restore();
+  });c.restore();
+}
+
+function drawLightGizmos(c,offset,wallTop,ground) {
+  if(!import.meta.env.DEV||!state.sceneEditing||state.editorLayer!=='lights')return;
+  state.lightSources.forEach(light=>{const point=resolveLightPoint(light,offset,wallTop,ground),selected=light.id===state.selectedLightId,length=Math.max(48,(Number(light.lengthM)||10)*PX_PER_M),width=Math.max(24,(Number(light.widthM)||7)*PX_PER_M),angle=(Number(light.angle)||0)*Math.PI/180;c.save();c.translate(point.x,point.y);c.rotate(angle);c.strokeStyle=selected?'#f0c849':'rgba(240,201,73,.55)';c.lineWidth=selected?2:1;c.setLineDash(selected?[7,5]:[3,5]);c.beginPath();c.moveTo(0,0);c.lineTo(-width*.5,length);c.moveTo(0,0);c.lineTo(width*.5,length);c.stroke();c.setLineDash([]);c.fillStyle=selected?'#f0c849':'rgba(240,201,73,.72)';c.beginPath();c.arc(0,0,selected?7:4,0,Math.PI*2);c.fill();c.restore();});
+}
+
+function eventStartTime(event) {
+  if(import.meta.env.DEV&&state.sceneEditing&&EVENT_PREVIEW_STARTS.has(event.id))return EVENT_PREVIEW_STARTS.get(event.id);
+  const scheduled=Date.parse(String(event.startAt||''));
+  return Number.isFinite(scheduled)?scheduled:EVENT_SESSION_START+Math.max(0,Number(event.startDelaySec)||0)*1000;
+}
+
+function walkerEventState(event,wallNow) {
+  const elapsed=(wallNow-eventStartTime(event))/1000;if(elapsed<0)return null;
+  const left=Math.min(Number.isFinite(Number(event.startX))?Number(event.startX):0,Number.isFinite(Number(event.endX))?Number(event.endX):700),rightEdge=Math.max(Number.isFinite(Number(event.startX))?Number(event.startX):0,Number.isFinite(Number(event.endX))?Number(event.endX):700),movesRight=event.direction!=='left',from=movesRight?left:rightEdge,to=movesRight?rightEdge:left,speed=Math.max(.2,Number(event.speedMps)||4),travel=Math.max(.05,Math.abs(to-from)/speed),cycle=travel+Math.max(0,Number(event.loopDelaySec)||0),run=Math.floor(elapsed/cycle);
+  const runCount=Math.max(0,Math.round(Number(event.runCount)||0));if(runCount&&run>=runCount)return null;
+  const within=elapsed-run*cycle;if(within>travel)return null;
+  const progress=reducedMotion.matches?.5:within/travel;
+  return{x:from+(to-from)*progress,dir:to>=from?1:-1,progress};
+}
+
+function activeWalkerSpeech(event,wallNow) {
+  if(event.speechEnabled!==true)return null;const messages=(Array.isArray(event.speechMessages)?event.speechMessages:[]).map(String).filter(Boolean);if(!messages.length)return null;
+  const elapsed=(wallNow-eventStartTime(event))/1000-Math.max(0,Number(event.speechDelaySec)||0),duration=Math.max(.5,Number(event.speechDurationSec)||3),every=Math.max(duration+.25,Number(event.speechEverySec)||12);if(elapsed<0)return null;const slot=Math.floor(elapsed/every),age=elapsed-slot*every;if(age>duration)return null;const edge=Math.min(.2,duration*.2),opacity=reducedMotion.matches?1:Math.min(1,age/edge,(duration-age)/edge);return{text:messages[slot%messages.length],opacity};
+}
+
+function drawWalkerSpeech(c,event,speech,x,anchorY) {
+  if(!speech)return;const fontSize=Math.max(12,Math.min(42,Number(event.speechFontSize)||20)),maxWidth=Math.max(120,Math.min(520,(Number(event.speechWidthM)||5)*PX_PER_M)),padding=Math.max(10,fontSize*.65);c.save();c.globalAlpha=visibilityAmount(event.visibility)*speech.opacity;c.font=`700 ${fontSize}px "Barlow Condensed",sans-serif`;c.textBaseline='middle';c.textAlign='left';const lines=wrapBubbleText(c,speech.text,maxWidth-padding*2),lineHeight=fontSize*1.16,textWidth=Math.max(...lines.map(line=>c.measureText(line).width),40),width=Math.min(maxWidth,textWidth+padding*2),height=lines.length*lineHeight+padding*1.5,left=x-width/2,top=anchorY-height-14;c.fillStyle=event.speechBackgroundColor||'#f2eadb';c.strokeStyle=event.speechTextColor||'#25211d';c.lineWidth=2;c.beginPath();c.roundRect(left,top,width,height,Math.min(14,fontSize*.55));c.fill();c.stroke();c.beginPath();c.moveTo(x-10,top+height-1);c.lineTo(x,anchorY);c.lineTo(x+12,top+height-1);c.closePath();c.fill();c.stroke();c.fillStyle=event.speechTextColor||'#25211d';lines.forEach((line,index)=>c.fillText(line,left+padding,top+padding*.75+lineHeight*(index+.5)));c.restore();
+}
+
+function drawEventWalker(c,event,x,baseline,offset,now,direction=1,speech=null) {
+  const visibility=visibilityAmount(event.visibility);if(visibility<=.001)return;
+  const distance=Math.abs(x*PX_PER_M-offset-innerWidth*.5),image=sceneImage(event.src,distance);if(!image.complete||!image.naturalWidth)return;
+  const frames=Math.max(2,Math.min(60,Math.round(Number(event.frames)||5))),animated=event.animated===true&&frames>1,vertical=event.frameDirection==='vertical';
+  const sourceWidth=animated&&!vertical?image.naturalWidth/frames:image.naturalWidth,sourceHeight=animated&&vertical?image.naturalHeight/frames:image.naturalHeight;
+  const frame=animated&&!reducedMotion.matches?Math.floor(now*Math.max(.5,Number(event.fps)||6)/1000)%frames:0,sourceX=animated&&!vertical?frame*sourceWidth:0,sourceY=animated&&vertical?frame*sourceHeight:0;
+  const width=Math.max(.2,Number(event.widthM)||3)*PX_PER_M,height=width*sourceHeight/sourceWidth,screenX=x*PX_PER_M-offset,dir=direction<0?1:-1;
+  if(screenX+width<0||screenX-width>innerWidth)return;c.save();c.globalAlpha=visibility;c.translate(screenX,baseline);c.scale(dir,1);c.drawImage(image,sourceX,sourceY,sourceWidth,sourceHeight,-width/2,-height,width,height);
+  if(import.meta.env.DEV&&state.sceneEditing&&!state.followedEventId&&state.editorLayer==='events'&&event.id===state.selectedEventId){c.strokeStyle='#f0c849';c.lineWidth=2;c.setLineDash([7,5]);c.strokeRect(-width/2,-height,width,height);c.setLineDash([]);}c.restore();drawWalkerSpeech(c,event,speech,screenX,baseline-height-8);
+}
+
+function activeTextBubbles(event,wallNow) {
+  const start=eventStartTime(event),elapsed=(wallNow-start)/1000;if(elapsed<0)return[];
+  const count=Math.max(1,Math.min(20,Math.round(Number(event.bubblesPerSequence)||1))),interval=Math.max(.2,Number(event.bubbleIntervalSec)||3),duration=Math.max(.5,Number(event.bubbleDurationSec)||2.5),span=(count-1)*interval+duration,repeat=Math.max(span,Number(event.repeatEverySec)||span),sequence=Math.floor(elapsed/repeat),sequenceCount=Math.max(1,Math.round(Number(event.sequenceCount)||1));if(event.repeatEvent===false&&sequence>=sequenceCount)return[];
+  const within=elapsed-sequence*repeat,legacy=(Array.isArray(event.messages)?event.messages:[]).map(String),configured=Array.isArray(event.sequences)?event.sequences:[],messages=configured.length?(configured[sequence%configured.length]||[]):legacy;if(!messages.some(Boolean))return[];
+  const active=[];for(let index=0;index<count;index++){const age=within-index*interval,text=String(messages[index]??legacy[(sequence*count+index)%Math.max(1,legacy.length)]??'').trim();if(age<0||age>duration||!text)continue;const edge=Math.min(.18,duration*.2),opacity=reducedMotion.matches?1:Math.min(1,age/edge,(duration-age)/edge);active.push({text,opacity,index});}return active;
+}
+
+function wrapBubbleText(c,text,maxWidth) {
+  const words=String(text).trim().split(/\s+/),lines=[];let line='';words.forEach(word=>{const candidate=line?`${line} ${word}`:word;if(line&&c.measureText(candidate).width>maxWidth){lines.push(line);line=word;}else line=candidate;});if(line)lines.push(line);return lines.slice(0,6);
+}
+
+function drawTextBubble(c,event,bubble,offset,wallTop,ground) {
+  const visibility=visibilityAmount(event.visibility),x=(Number(event.x)||0)*PX_PER_M-offset,y=wallTop+(Number(event.y)||0)*(ground-wallTop)-bubble.index*8;if(x<-500||x>innerWidth+500||visibility<=.001)return;
+  const fontSize=Math.max(12,Math.min(42,Number(event.fontSize)||20)),maxWidth=Math.max(120,Math.min(520,(Number(event.widthM)||5)*PX_PER_M)),padding=Math.max(10,fontSize*.65);c.save();c.globalAlpha=visibility*bubble.opacity;c.font=`700 ${fontSize}px "Barlow Condensed",sans-serif`;c.textBaseline='middle';c.textAlign='left';const lines=wrapBubbleText(c,bubble.text,maxWidth-padding*2),lineHeight=fontSize*1.16,textWidth=Math.max(...lines.map(line=>c.measureText(line).width),40),width=Math.min(maxWidth,textWidth+padding*2),height=lines.length*lineHeight+padding*1.5,left=x-width/2,top=y-height;
+  c.fillStyle=event.backgroundColor||'#f2eadb';c.strokeStyle=event.textColor||'#25211d';c.lineWidth=2;c.beginPath();c.roundRect(left,top,width,height,Math.min(14,fontSize*.55));c.fill();c.stroke();c.beginPath();c.moveTo(x-10,y-1);c.lineTo(x,y+14);c.lineTo(x+12,y-1);c.closePath();c.fill();c.stroke();c.fillStyle=event.textColor||'#25211d';lines.forEach((line,index)=>c.fillText(line,left+padding,top+padding*.75+lineHeight*(index+.5)));c.restore();
+}
+
+function drawEventGizmos(c,offset,wallTop,ground) {
+  if(!import.meta.env.DEV||!state.sceneEditing||state.followedEventId||state.editorLayer!=='events')return;state.events.forEach(event=>{const selected=event.id===state.selectedEventId;c.save();c.fillStyle=selected?'#f0c849':'rgba(240,201,73,.72)';c.strokeStyle='#25211d';c.lineWidth=2;if(event.type==='text'){const x=(Number(event.x)||0)*PX_PER_M-offset,y=wallTop+(Number(event.y)||0)*(ground-wallTop);c.beginPath();c.arc(x,y,selected?7:4,0,Math.PI*2);c.fill();if(selected)c.stroke();}else{const start=(Number.isFinite(Number(event.startX))?Number(event.startX):0)*PX_PER_M-offset,end=(Number.isFinite(Number(event.endX))?Number(event.endX):700)*PX_PER_M-offset,pathY=Number.isFinite(Number(event.pathY))?Number(event.pathY):1.35,y=wallTop+pathY*(ground-wallTop);c.setLineDash([7,5]);c.beginPath();c.moveTo(start,y);c.lineTo(end,y);c.stroke();c.setLineDash([]);[start,end].forEach((x,index)=>{c.beginPath();c.arc(x,y,selected?7:4,0,Math.PI*2);c.fill();if(selected)c.stroke();c.fillStyle='#25211d';c.font='700 10px sans-serif';c.textAlign='center';c.fillText(index?'B':'A',x,y-11);c.fillStyle=selected?'#f0c849':'rgba(240,201,73,.72)';});}c.restore();});
 }
 
 function pumpSceneImageQueue() {
@@ -427,12 +582,16 @@ function sceneLayerItems(layer) {
 
 function drawSceneItem(c, item, offset, wallTop, ground, now) {
     if (mobileViewport.matches && item.src.includes('1784285163468-duha')) return;
+    const visibility=visibilityAmount(item.visibility);if(visibility<=.001)return;
     let width = item.widthM * PX_PER_M;
     const x = item.x * PX_PER_M - offset;
     const distanceFromViewport=x+width/2<0?-(x+width/2):x-width/2>innerWidth?x-width/2-innerWidth:0;
     if(distanceFromViewport>scenePreloadPadding())return;
-    const image = sceneImage(item.src,distanceFromViewport);
-    if (!image.complete || !image.naturalWidth) return;
+    const dayImage=sceneImage(item.src,distanceFromViewport),lamp=isLampItem(item),nightFactor=lamp?Math.min(1,lampNightFactor(item,now)):0;
+    const nightImage=lamp&&nightFactor>.001?sceneImage(NIGHT_LAMP_SRC,distanceFromViewport):null;
+    const dayReady=dayImage.complete&&dayImage.naturalWidth,nightReady=nightImage?.complete&&nightImage.naturalWidth;
+    const image=dayReady?dayImage:nightReady?nightImage:null;
+    if (!image) return;
     const frames = Math.max(2, Math.min(60, Math.round(Number(item.frames) || 5)));
     const animated = item.animated === true && frames > 1;
     const vertical = item.frameDirection === 'vertical';
@@ -454,7 +613,10 @@ function drawSceneItem(c, item, offset, wallTop, ground, now) {
     const height = width * displaySourceHeight / displaySourceWidth;
     if (x + width / 2 < 0 || x - width / 2 > innerWidth) return;
     c.save(); c.translate(x, baseline); c.rotate(item.rotation * Math.PI / 180);
-    c.drawImage(image, sourceX, sourceY, displaySourceWidth, displaySourceHeight, -width / 2, -height, width, height);
+    if(lamp&&nightReady){
+      if(dayReady&&nightFactor<.999){c.globalAlpha=visibility*(1-nightFactor);c.drawImage(dayImage,sourceX,sourceY,displaySourceWidth,displaySourceHeight,-width/2,-height,width,height);}
+      c.globalAlpha=visibility*(dayReady?nightFactor:1);c.drawImage(nightImage,sourceX,sourceY,displaySourceWidth,displaySourceHeight,-width/2,-height,width,height);c.globalAlpha=1;
+    }else{c.globalAlpha=visibility;c.drawImage(image, sourceX, sourceY, displaySourceWidth, displaySourceHeight, -width / 2, -height, width, height);c.globalAlpha=1;}
     if (import.meta.env.DEV && state.sceneEditing && item.id === state.selectedSceneId) {
       c.strokeStyle = '#f0c849'; c.lineWidth = 2; c.setLineDash([7, 5]);
       c.strokeRect(-width / 2, -height, width, height); c.setLineDash([]);
@@ -501,6 +663,32 @@ function pickSceneItem(clientX,clientY) {
   return null;
 }
 
+function pickLightAt(clientX,clientY) {
+  const point=screenToWorldPoint(clientX,clientY),wallTop=point.bands.wallTop,ground=point.bands.wallBottom;
+  for(const light of [...state.lightSources].reverse()){
+    const source=resolveLightPoint(light,state.camera,wallTop,ground);
+    if(Math.hypot(point.screenX-source.x,point.screenY-source.y)<=18)return light.id;
+  }
+  return null;
+}
+
+function moveLightFromScreen(light,clientX,clientY) {
+  const point=screenToWorldPoint(clientX,clientY),wallTop=point.bands.wallTop,ground=point.bands.wallBottom;
+  const lamp=light.lampId&&state.sceneItems.find(item=>item.id===light.lampId&&isLampItem(item));
+  if(lamp){const base=lampBulbPoint(lamp,state.camera,wallTop,ground);return{offsetX:(point.screenX-base.x)/PX_PER_M,offsetY:(point.screenY-base.y)/PX_PER_M};}
+  return{x:point.x,y:point.y};
+}
+
+function resolvedLightPosition(light) {
+  const bands=sceneBands(),point=resolveLightPoint(light,state.camera,bands.wallTop,bands.wallBottom);
+  return{x:(point.x+state.camera)/PX_PER_M,y:(point.y-bands.wallTop)/(bands.wallBottom-bands.wallTop)};
+}
+
+function pickEventAt(clientX,clientY) {
+  const point=screenToWorldPoint(clientX,clientY);for(const event of [...state.events].reverse()){if(event.type==='text'){const x=(Number(event.x)||0)*PX_PER_M-state.camera,y=point.bands.wallTop+(Number(event.y)||0)*(point.bands.wallBottom-point.bands.wallTop),width=Math.max(120,Math.min(520,(Number(event.widthM)||5)*PX_PER_M));if(Math.hypot(point.screenX-x,point.screenY-y)<=20||(Math.abs(point.screenX-x)<=width*.5&&point.screenY>=y-190&&point.screenY<=y+20))return event.id;}else{const start=(Number.isFinite(Number(event.startX))?Number(event.startX):0)*PX_PER_M-state.camera,end=(Number.isFinite(Number(event.endX))?Number(event.endX):700)*PX_PER_M-state.camera,pathY=Number.isFinite(Number(event.pathY))?Number(event.pathY):1.35,y=point.bands.wallTop+pathY*(point.bands.wallBottom-point.bands.wallTop);if(Math.hypot(point.screenX-start,point.screenY-y)<=24||Math.hypot(point.screenX-end,point.screenY-y)<=24)return event.id;}}return null;
+}
+function moveEventFromScreen(clientX,clientY) { const point=screenToWorldPoint(clientX,clientY);return{x:Math.max(0,Math.min(700,point.x)),y:Math.max(-3,Math.min(5,point.y))}; }
+
 function drawWallMountedAssets(c,offset,wallTop,ground,now) {
   sceneLayerItems('front').forEach(item=>{if(Number(item.y)<=1)drawSceneItem(c,item,offset,wallTop,ground,now);});
 }
@@ -531,14 +719,16 @@ function drawGraffitiText(c,g,x,y,preview=false) {
 
 let renderedMeter=0;
 function render(now) {
+  const wallNow=Date.now();
   const dt=Math.min((now-state.last)/1000,.05); state.last=now;
   const smooth=rate=>1-Math.exp(-rate*dt);
   state.zoom+=(state.targetZoom-state.zoom)*smooth(reducedMotion.matches?18:8);
+  state.nightMix+=(environmentTarget(now)-state.nightMix)*smooth(reducedMotion.matches?18:1.8);
   let inputX=(state.keys.has('ArrowRight')||state.keys.has('d')?1:0)-(state.keys.has('ArrowLeft')||state.keys.has('a')?1:0)+state.moving;
   inputX=Math.max(-1,Math.min(1,inputX));
   if(state.edit||state.sceneEditing)inputX=0;
   const inputLength=Math.abs(inputX);
-  const reduced=reducedMotion.matches, running=state.running&&inputLength>0&&!state.edit&&!state.sceneEditing, horizontalSpeed=running?5.8*DEV_RUN_MULTIPLIER:3.2;
+  const reduced=reducedMotion.matches, running=state.running&&inputLength>0&&!state.edit&&!state.sceneEditing, horizontalSpeed=running?9.2*DEV_RUN_MULTIPLIER:5.8;
   const acceleration=reduced?18:(running&&import.meta.env.DEV?14:running?6.4:7.5), drag=reduced?22:10;
   state.velocity+=(inputX*horizontalSpeed-state.velocity)*smooth(inputX?acceleration:drag);
   if(Math.abs(state.velocity)<.015)state.velocity=0;
@@ -548,16 +738,16 @@ function render(now) {
     state.x=Math.max(0,Math.min(700,state.x+state.velocity*dt));
     state.stride+=movementEnergy*dt*(running?7.4:4.6);
   }
-  const playerScreen=playerScreenX(), desired=state.x*PX_PER_M-playerScreen;
-  state.camera+=(Math.max(0,Math.min(700*PX_PER_M-innerWidth,desired))-state.camera)*smooth(reduced?12:running&&import.meta.env.DEV?10:4.2);
-  const currentMeter=Math.min(700,Math.floor(state.x)+1);
+  const playerScreen=playerScreenX(),followedEvent=import.meta.env.DEV&&state.sceneEditing&&state.followedEventId?state.events.find(event=>event.id===state.followedEventId&&event.type==='walker'):null,followedState=followedEvent?walkerEventState(followedEvent,wallNow):null;if(followedState)state.followCameraX=followedState.x;else if(followedEvent&&state.followCameraX===null){const a=Number.isFinite(Number(followedEvent.startX))?Number(followedEvent.startX):0,b=Number.isFinite(Number(followedEvent.endX))?Number(followedEvent.endX):700;state.followCameraX=followedEvent.direction==='left'?Math.max(a,b):Math.min(a,b);}const followedX=followedEvent?state.followCameraX:null,viewCenter=innerWidth*.5,desired=followedX!==null?followedX*PX_PER_M-viewCenter:state.x*PX_PER_M-playerScreen,cameraTarget=followedX!==null?desired:Math.max(0,Math.min(700*PX_PER_M-innerWidth,desired));
+  if(followedX!==null&&state.followCameraSnap){state.camera=cameraTarget;state.followCameraSnap=false;}else state.camera+=(cameraTarget-state.camera)*smooth(followedX!==null?(reduced?18:7.5):reduced?12:running&&import.meta.env.DEV?10:4.2);
+  const currentMeter=Math.min(700,Math.floor(followedX??state.x)+1);
   if(currentMeter!==renderedMeter){renderedMeter=currentMeter;$('#meterValue').textContent=`${currentMeter} – 700`;}
   syncGraffitiIndex();
   ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,innerWidth,innerHeight);
-  drawSky(ctx,state.camera);
+  drawSky(ctx,state.camera,now);
   const bands=sceneBands(), ground=bands.wallBottom, wallTop=bands.wallTop, off=state.camera;
   ctx.save();
-  ctx.translate(playerScreen,ground);ctx.scale(state.zoom,state.zoom);ctx.translate(-playerScreen,-ground);
+  const viewAnchorX=followedX!==null?innerWidth*.5:playerScreen;ctx.translate(viewAnchorX,ground);ctx.scale(state.zoom,state.zoom);ctx.translate(-viewAnchorX,-ground);
   ctx.save();ctx.beginPath();ctx.rect(0,0,innerWidth,wallTop);ctx.clip();drawSceneLayer(ctx,'behind',off,wallTop,ground,now);ctx.restore();
   brickWall(ctx,off,wallTop,ground);
   drawWallMountedAssets(ctx,off,wallTop,ground,now);
@@ -570,8 +760,9 @@ function render(now) {
   const playerX=state.x*PX_PER_M-off,playerBaseline=baselineFor(state.lane),playerScale=depthScale(state.lane);
   const foreground=[];
   sceneLayerItems('front').forEach(item=>{if(Number(item.y)<=1)return;const width=item.widthM*PX_PER_M,x=item.x*PX_PER_M-off;if(x+width/2<0||x-width/2>innerWidth)return;foreground.push({y:wallTop+item.y*(ground-wallTop),draw:()=>drawSceneItem(ctx,item,off,wallTop,ground,now)});});
-  foreground.push({y:playerBaseline,draw:()=>{drawPerson(ctx,playerX,playerBaseline,playerScale,state,state.velocity/3.2,state.stride,movementEnergy);drawNameLabel(ctx,playerX,playerBaseline,playerScale,state.name,state.nameColor);}});
-  state.others.forEach(p=>{
+  state.events.filter(event=>event.type==='walker').forEach(event=>{const active=walkerEventState(event,wallNow);if(!active)return;const pathY=Number(event.pathY),lane=Math.max(0,Math.min(1,Number(event.lane)||.5)),baseline=Number.isFinite(pathY)?wallTop+pathY*(ground-wallTop):baselineFor(lane),speech=activeWalkerSpeech(event,wallNow);foreground.push({y:baseline,draw:()=>drawEventWalker(ctx,event,active.x,baseline,off,now,active.dir,speech)});});
+  if(followedX===null)foreground.push({y:playerBaseline,draw:()=>{drawPerson(ctx,playerX,playerBaseline,playerScale,state,state.velocity/3.2,state.stride,movementEnergy);drawNameLabel(ctx,playerX,playerBaseline,playerScale,state.name,state.nameColor);}});
+  if(followedX===null)state.others.forEach(p=>{
     const predictionAge=Math.max(0,Math.min(1.25,(now-p.receivedAt)/1000));
     const predictedX=Math.max(0,Math.min(700,p.targetX+p.velocity*predictionAge));
     const correction=predictedX-p.displayX;
@@ -582,6 +773,11 @@ function render(now) {
     if(x>-100&&x<innerWidth+100){const laneValue=Number(p.lane),lane=Number.isFinite(laneValue)?Math.max(0,Math.min(1,laneValue)):.5,baseline=baselineFor(lane),scale=depthScale(lane);foreground.push({y:baseline,draw:()=>{drawPerson(ctx,x,baseline,scale,{...p,dir:p.dir||1},p.velocity/3.2,p.stride,remoteEnergy);drawNameLabel(ctx,x,baseline,scale,p.name,p.nameColor);}});}
   });
   foreground.sort((a,b)=>a.y-b.y).forEach(entry=>entry.draw());
+  drawNightShade(ctx,state.nightMix);
+  drawLightSources(ctx,off,wallTop,ground,now);
+  drawLightGizmos(ctx,off,wallTop,ground);
+  state.events.filter(event=>event.type==='text').forEach(event=>{const bubbles=activeTextBubbles(event,wallNow);if(!bubbles.length&&import.meta.env.DEV&&state.sceneEditing&&state.editorLayer==='events'&&event.id===state.selectedEventId)bubbles.push({text:event.sequences?.[0]?.[0]||event.messages?.[0]||'TEXTOVÁ BUBLINA',opacity:.82,index:0});bubbles.forEach(bubble=>drawTextBubble(ctx,event,bubble,off,wallTop,ground));});
+  drawEventGizmos(ctx,off,wallTop,ground);
   if(state.edit){
     const sx=state.section*SECTION_PX-off+PILLAR_PX,sw=SECTION_PX-PILLAR_PX,tx=state.targetX*PX_PER_M-off,ty=wallTop+(ground-wallTop)*state.targetY;
     ctx.save();ctx.strokeStyle='#f0c849';ctx.lineWidth=2;ctx.setLineDash([8,6]);ctx.strokeRect(sx+1,wallTop+1,sw-2,ground-wallTop-2);ctx.setLineDash([]);ctx.fillStyle='#f0c849';ctx.beginPath();ctx.arc(tx,ty,6,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#211d19';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(tx-12,ty);ctx.lineTo(tx+12,ty);ctx.moveTo(tx,ty-12);ctx.lineTo(tx,ty+12);ctx.stroke();ctx.restore();
@@ -630,7 +826,7 @@ function receivePresence(players,{replace=false}={}){
     const previous=current.get(id),packetTime=Number(packet.t)||Date.now();
     if(previous&&packetTime<previous.packetTime)return;
     const targetX=Math.max(0,Math.min(700,Number(packet.x)||0));
-    current.set(id,{...packet,id,targetX,displayX:Number.isFinite(previous?.displayX)?previous.displayX:targetX,velocity:Math.max(-40,Math.min(40,Number(packet.velocity)||0)),running:packet.running===true,packetTime,receivedAt,stride:previous?.stride||0});
+    current.set(id,{...packet,id,targetX,displayX:Number.isFinite(previous?.displayX)?previous.displayX:targetX,velocity:Math.max(-60,Math.min(60,Number(packet.velocity)||0)),running:packet.running===true,packetTime,receivedAt,stride:previous?.stride||0});
   });
   if(replace)for(const id of current.keys())if(!incoming.has(id))current.delete(id);
   state.others=[...current.values()].filter(player=>receivedAt-player.receivedAt<16000);
@@ -731,13 +927,27 @@ if (import.meta.env.DEV) {
     canvas,
     getItems: () => structuredClone(state.sceneItems),
     setItems: items => { state.sceneItems = structuredClone(items); },
+    getLights: () => structuredClone(state.lightSources),
+    setLights: lights => { state.lightSources = structuredClone(lights); },
+    getEvents: () => structuredClone(state.events),
+    setEvents: events => { state.events = structuredClone(events); },
     getTerrain: () => structuredClone(state.terrain),
     setTerrain: terrain => { state.terrain = structuredClone(terrain); },
     getLanding: () => structuredClone(state.landing),
     setLanding: landing => { state.landing = structuredClone(landing); applyLandingText(); },
+    getEnvironmentMode: () => state.environmentMode,
+    setEnvironmentMode: mode => { state.environmentMode = ['auto','day','night'].includes(mode) ? mode : 'auto'; },
     getPlayerX: () => state.x,
+    getViewCenterX: () => Math.max(0,Math.min(700,(state.camera+innerWidth*.5)/PX_PER_M)),
+    getDefaultEventY: () => { const bands=sceneBands();return Number(((bands.walkwayTop+bands.walkwayHeight*.5-bands.wallTop)/(bands.wallBottom-bands.wallTop)).toFixed(3)); },
     setSelected: id => { state.selectedSceneId = id; },
-    setEditing: value => { state.sceneEditing = value; if (value && state.edit) closeEditor(); },
+    setSelectedLight: id => { state.selectedLightId = id; },
+    setSelectedEvent: id => { state.selectedEventId = id; },
+    getFollowedEventId: () => state.followedEventId,
+    setFollowedEvent: id => { state.followedEventId=state.events.some(event=>event.id===id&&event.type==='walker')?id:null;state.followCameraX=null;state.followCameraSnap=Boolean(state.followedEventId); },
+    previewEvent: id => { if(id)EVENT_PREVIEW_STARTS.set(id,Date.now()); },
+    setEditorLayer: layer => { state.editorLayer = ['lights','events'].includes(layer) ? layer : 'assets'; },
+    setEditing: value => { state.sceneEditing = value; if(!value){state.followedEventId=null;state.followCameraX=null;state.followCameraSnap=false;} if (value && state.edit) closeEditor(); },
     getGraffitiCount: () => state.graffiti.length,
     clearGraffiti: () => {
       const removed = state.graffiti.length;
@@ -747,6 +957,11 @@ if (import.meta.env.DEV) {
     },
     screenToScene: (clientX, clientY) => { const point=screenToWorldPoint(clientX,clientY);return {x:Math.max(0,Math.min(700,point.x)),y:Math.max(-2.5,Math.min(5,point.y))}; },
     pickItemAt: pickSceneItem,
+    pickLightAt,
+    moveLightFromScreen,
+    getResolvedLightPosition: resolvedLightPosition,
+    pickEventAt,
+    moveEventFromScreen,
     notify: toast
   }));
 }

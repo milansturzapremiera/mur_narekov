@@ -12,7 +12,7 @@ export default async function handler(req, res) {
         name: String(p.name || '').trim().slice(0, 16),
         nameColor: /^#[0-9a-f]{6}$/i.test(p.nameColor) ? p.nameColor : '#f0c849',
         dir: Number(p.dir) < 0 ? -1 : 1,
-        velocity: Math.max(-40, Math.min(40, Number(p.velocity) || 0)),
+        velocity: Math.max(-60, Math.min(60, Number(p.velocity) || 0)),
         running: p.running === true,
         t: Date.now()
       };
