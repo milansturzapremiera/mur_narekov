@@ -13,7 +13,7 @@ export default async function handler(req, res) {
         nameColor: /^#[0-9a-f]{6}$/i.test(p.nameColor) ? p.nameColor : '#f0c849',
         dir: Number(p.dir) < 0 ? -1 : 1,
         velocity: Math.max(-60, Math.min(60, Number(p.velocity) || 0)),
-        running: p.running === true,
+        running: p.running === true, disconnected: p.disconnected === true,
         t: Date.now()
       };
       await command(['LPUSH', 'mur:presence', JSON.stringify(safe)]);
@@ -21,8 +21,8 @@ export default async function handler(req, res) {
     }
     if (!['GET', 'POST'].includes(req.method)) return send(res, 405, { error: 'Method not allowed' });
     const raw = await command(['LRANGE', 'mur:presence', '0', '199']);
-    const latest = new Map();
-    raw.map(JSON.parse).forEach(p => { if (!latest.has(p.id) && Date.now() - p.t < 15000) latest.set(p.id, p); });
+    const latest = new Map(), seen = new Set();
+    raw.map(JSON.parse).forEach(p => { if(seen.has(p.id))return;seen.add(p.id);if(!p.disconnected&&Date.now()-p.t<15000)latest.set(p.id,p); });
     return send(res, 200, { players: [...latest.values()] });
   } catch {
     return send(res, 500, { players: [] });

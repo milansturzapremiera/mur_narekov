@@ -37,6 +37,7 @@ const TRACKS = [
 ];
 const WRITE_LIMIT_ENABLED = !import.meta.env.DEV;
 const MESSAGE_LIMIT = 20;
+const PRESENCE_IDLE_MS = 2 * 60 * 1000;
 const DEV_RUN_MULTIPLIER = import.meta.env.DEV ? 5 : 1;
 const NIGHT_LAMP_SRC = '/assets/scene/lampa_noc.png';
 const isLampItem = item => String(item?.name||'').toLocaleLowerCase('sk').startsWith('lampa') || String(item?.src||'').toLowerCase().includes('lampa');
@@ -65,7 +66,7 @@ const state = {
   terrain: structuredClone(initialTerrain),
   landing: structuredClone(initialLanding),
   hasWritten: WRITE_LIMIT_ENABLED && storedValue(WRITTEN_KEY) === '1', savingGraffiti: false,
-  mode: 'local', keys: new Set(), last: performance.now(), environmentMode: 'auto', nightMix: automaticNightAmount(), accessGranted: false
+  mode: 'local', keys: new Set(), last: performance.now(), environmentMode: 'auto', nightMix: automaticNightAmount(), accessGranted: false, lastPlayerMovementAt: Date.now(), presenceIdle: false
 };
 const uid = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 const EVENT_SESSION_START = Date.now();
@@ -805,7 +806,8 @@ function render(now) {
   const movementEnergy=Math.min(1,Math.abs(state.velocity/horizontalSpeed));
   if(state.started&&state.velocity){
     if(state.velocity)state.dir=Math.sign(state.velocity);
-    state.x=Math.max(0,Math.min(700,state.x+state.velocity*dt));
+    const previousX=state.x;state.x=Math.max(0,Math.min(700,state.x+state.velocity*dt));
+    if(Math.abs(state.x-previousX)>.00001){state.lastPlayerMovementAt=wallNow;state.presenceIdle=false;}
     state.stride+=movementEnergy*dt*(running?7.4:4.6);
   }
   const playerScreen=playerScreenX(),followedEvent=import.meta.env.DEV&&state.sceneEditing&&state.followedEventId?state.events.find(event=>event.id===state.followedEventId&&event.type==='walker'):null,followedState=followedEvent?walkerEventState(followedEvent,wallNow):null;if(followedState)state.followCameraX=followedState.x;else if(followedEvent&&state.followCameraX===null){const a=Number.isFinite(Number(followedEvent.startX))?Number(followedEvent.startX):0,b=Number.isFinite(Number(followedEvent.endX))?Number(followedEvent.endX):700;state.followCameraX=followedEvent.direction==='left'?Math.max(a,b):Math.min(a,b);}const followedX=followedEvent?state.followCameraX:null,freeCameraX=import.meta.env.DEV&&state.sceneEditing&&state.devFreeCamera?state.devCameraX:null,cameraSubjectX=followedX??freeCameraX,viewCenter=innerWidth*.5,viewAnchor=cameraSubjectX!==null?viewCenter:playerScreen,desired=cameraSubjectX!==null?cameraSubjectX*PX_PER_M-viewCenter:state.x*PX_PER_M-playerScreen,worldWidth=700*PX_PER_M,safeZoom=Math.max(1,state.zoom),cameraMin=viewAnchor/safeZoom-viewAnchor,cameraMax=Math.max(cameraMin,worldWidth-viewAnchor-(innerWidth-viewAnchor)/safeZoom),cameraTarget=Math.max(cameraMin,Math.min(cameraMax,desired));
@@ -904,18 +906,24 @@ function receivePresence(players,{replace=false}={}){
   if(replace)for(const id of current.keys())if(!incoming.has(id))current.delete(id);
   state.others=[...current.values()].filter(player=>receivedAt-player.receivedAt<16000);
 }
-channel?.addEventListener('message',e=>{if(e.data.type==='graffiti')state.graffiti=e.data.items;if(e.data.type==='presence')receivePresence(e.data.players);if(WRITE_LIMIT_ENABLED&&e.data.type==='written'){state.hasWritten=true;if(state.edit)closeEditor();updateWriteAccess();}});
+channel?.addEventListener('message',e=>{if(e.data.type==='graffiti')state.graffiti=e.data.items;if(e.data.type==='presence')receivePresence(e.data.players);if(e.data.type==='presence-leave')state.others=state.others.filter(player=>player.id!==e.data.id);if(WRITE_LIMIT_ENABLED&&e.data.type==='written'){state.hasWritten=true;if(state.edit)closeEditor();updateWriteAccess();}});
 
 let presenceRequestPending=false;
+async function announcePresenceLeave(){
+  channel?.postMessage({type:'presence-leave',id:uid});
+  if(state.mode!=='shared')return;
+  try{await fetch('/api/presence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uid,disconnected:true})});}catch{}
+}
 setInterval(async()=>{
   if(!state.started)return;
+  if(Date.now()-state.lastPlayerMovementAt>=PRESENCE_IDLE_MS){if(!state.presenceIdle){state.presenceIdle=true;state.velocity=0;state.running=false;announcePresenceLeave();}return;}
   const me={id:uid,x:state.x,lane:state.lane,skin:state.skin,name:state.name,nameColor:state.nameColor,dir:state.dir,velocity:state.velocity,running:state.running,t:Date.now()};
   channel?.postMessage({type:'presence',players:[me]});
   if(state.mode==='shared'&&!presenceRequestPending){presenceRequestPending=true;try{const r=await fetch('/api/presence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(me)});if(r.ok)receivePresence((await r.json()).players,{replace:true});}catch{}finally{presenceRequestPending=false;}}
 },1000);
 
 $('#characterForm').addEventListener('change',e=>{if(e.target.name==='skin')state.skin=e.target.value;drawAvatar();});
-$('#characterForm').addEventListener('submit',e=>{e.preventDefault();if(!state.accessGranted)return;startMusic();state.name=$('#playerName').value.trim().slice(0,16);state.nameColor=$('#playerNameColor').value;state.started=true;$('#entry').classList.add('gone');canvas.focus();});
+$('#characterForm').addEventListener('submit',e=>{e.preventDefault();if(!state.accessGranted)return;startMusic();state.name=$('#playerName').value.trim().slice(0,16);state.nameColor=$('#playerNameColor').value;state.lastPlayerMovementAt=Date.now();state.presenceIdle=false;state.started=true;$('#entry').classList.add('gone');canvas.focus();});
 addEventListener('keydown',e=>{if(e.target.matches?.('input, textarea, select')||e.target.isContentEditable)return;const key=e.key.length===1?e.key.toLowerCase():e.key;if(e.key==='Shift'&&!state.edit&&!state.sceneEditing){e.preventDefault();state.running=true;}if(['ArrowLeft','ArrowRight','a','d'].includes(key)&&!state.edit){e.preventDefault();state.keys.add(key);}});
 addEventListener('keyup',e=>{const key=e.key.length===1?e.key.toLowerCase():e.key;if(e.key==='Shift')state.running=false;state.keys.delete(key);});
 addEventListener('blur',()=>{state.running=false;state.keys.clear();state.moving=0;});
