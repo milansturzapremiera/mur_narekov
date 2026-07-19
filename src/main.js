@@ -32,14 +32,14 @@ const VISITOR_KEY = 'mur:visitor-id', WRITTEN_KEY = 'mur:has-written';
 const MUSIC_ENABLED_KEY = 'mur:music-enabled', MUSIC_VOLUME_KEY = 'mur:music-volume';
 const MUSIC_TRACK_KEY = 'mur:music-track';
 const TRACKS = [
-  { title:'Ukáž mi čurilu',artist:'zltunke_',src:'/assets/audio/background-music.mp3',cover:'/assets/audio/cover.png' },
-  { title:'hymna 2.0',artist:'zltunke_',src:'/assets/audio/hymna-2.mp3',cover:'/assets/audio/cover.png' }
+  { title:'Ukáž mi čurilu',artist:'zltunke_',src:'/assets/audio/background-music.mp3',cover:'/assets/audio/cover.webp' },
+  { title:'hymna 2.0',artist:'zltunke_',src:'/assets/audio/hymna-2.mp3',cover:'/assets/audio/cover.webp' }
 ];
 const WRITE_LIMIT_ENABLED = !import.meta.env.DEV;
 const MESSAGE_LIMIT = 20;
 const PRESENCE_IDLE_MS = 2 * 60 * 1000;
 const DEV_RUN_MULTIPLIER = import.meta.env.DEV ? 5 : 1;
-const NIGHT_LAMP_SRC = '/assets/scene/lampa_noc.png';
+const NIGHT_LAMP_SRC = '/assets/scene/lampa_noc.webp';
 const isLampItem = item => String(item?.name||'').toLocaleLowerCase('sk').startsWith('lampa') || String(item?.src||'').toLowerCase().includes('lampa');
 function automaticNightAmount(date = new Date()) {
   const hour = date.getHours() + date.getMinutes() / 60;
@@ -81,7 +81,7 @@ document.documentElement.classList.add('access-locked');
 document.querySelector('#app').innerHTML = `
   <main id="game" aria-label="Múr nárekov, interaktívna prechádzka">
     <section class="access-gate" id="accessGate" aria-label="Vstup s heslom">
-      <img class="access-gate-poster" src="/assets/access/p_01.png" alt="Múr nárekov 0.01 beta">
+      <img class="access-gate-poster" src="/assets/access/p_01.webp" alt="Múr nárekov 0.01 beta">
       <form class="access-gate-form" id="accessGateForm" aria-label="Prihlásenie">
         <label class="sr-only" for="accessPassword">Heslo</label>
         <div><input id="accessPassword" name="password" type="password" maxlength="128" autocomplete="current-password" placeholder="Heslo" required><button type="submit" aria-label="Vstúpiť">→</button></div>
@@ -91,11 +91,9 @@ document.querySelector('#app').innerHTML = `
     <canvas id="world" tabindex="0" aria-label="700 metrov dlhý tehlový múr s odkazmi návštevníkov."></canvas>
     <header class="hud">
       <div class="hud-left">
-        <div class="brand"><span>MÚR</span><strong>NÁREKOV</strong></div>
+        <div class="meter" aria-label="Aktuálna poloha na múre"><b id="meterValue">1 – 700</b></div>
         <button class="graffiti-count" id="graffitiCountButton" type="button" aria-expanded="false" aria-controls="graffitiIndex" aria-label="Zobraziť všetky odkazy"><b id="graffitiCount">0</b><span>odkazov</span></button>
       </div>
-      <div class="meter" aria-label="Aktuálna poloha na múre"><b id="meterValue">1 – 700</b></div>
-      <div class="status"><i id="statusDot"></i><span id="statusText">lokálna stena</span></div>
     </header>
     <section class="graffiti-index" id="graffitiIndex" aria-hidden="true" aria-labelledby="graffitiIndexTitle" inert>
       <header><div><span>REGISTER MÚRU</span><h2 id="graffitiIndexTitle">Všetky odkazy</h2></div><button id="graffitiIndexClose" type="button" aria-label="Zavrieť zoznam odkazov">×</button></header>
@@ -106,7 +104,7 @@ document.querySelector('#app').innerHTML = `
     <div class="audio-control" id="audioControl" aria-label="Hudba na pozadí">
       <button class="audio-compact-toggle" id="audioCompactToggle" type="button" aria-expanded="false" aria-controls="audioPanel" aria-label="Otvoriť ovládanie hudby"><span aria-hidden="true">♪</span></button>
       <div class="audio-panel" id="audioPanel">
-        <img class="track-art" src="/assets/audio/cover.png" alt="" width="52" height="52">
+        <img class="track-art" src="/assets/audio/cover.webp" alt="" width="52" height="52">
         <div class="track-info"><strong id="trackTitle"></strong><span id="trackArtist"></span></div>
         <div class="track-actions">
           <button class="track-skip" id="previousTrack" type="button" aria-label="Predchádzajúca skladba"><span aria-hidden="true">‹</span></button>
@@ -315,10 +313,10 @@ wallSegmentImage.decoding = 'async';
 wallPillarImage.decoding = 'async';
 lowWallImage.decoding = 'async';
 grassImage.decoding = 'async';
-wallSegmentImage.src = '/assets/wall/brick-wall-segment.png';
-wallPillarImage.src = '/assets/wall/brick-pillar.png';
-lowWallImage.src = '/assets/wall/maly-murik.png';
-grassImage.src = '/assets/wall/grass.png';
+wallSegmentImage.src = '/assets/wall/brick-wall-segment.webp';
+wallPillarImage.src = '/assets/wall/brick-pillar.webp';
+lowWallImage.src = '/assets/wall/maly-murik.webp';
+grassImage.src = '/assets/wall/grass.webp';
 
 $('#fontList').innerHTML = FONTS.map((f,i)=>`<label><input type="radio" name="font" value="${i}" ${i?'':'checked'}><span style="font-family:${f[1]}">${f[0]}</span></label>`).join('');
 
@@ -891,7 +889,7 @@ function updateWriteAccess() {
 
 async function loadWorld(){
   state.graffiti=localItems();
-  try{const r=await fetch('/api/graffiti',{headers:{'X-Writer-Id':visitorId}});if(!r.ok)throw 0;const data=await r.json();state.mode='shared';state.graffiti=data.items;state.hasWritten=WRITE_LIMIT_ENABLED&&Boolean(data.hasWritten);if(state.hasWritten)storeValue(WRITTEN_KEY,'1');else removeStoredValue(WRITTEN_KEY);$('#statusText').textContent='spoločná stena';$('#statusDot').classList.add('online');if(!state.hasWritten)$('#editorNote').textContent=WRITE_LIMIT_ENABLED?'Máš jeden odkaz. Po uložení ho uvidia aj ďalší návštevníci.':'DEV režim: odkazy môžeš pridávať bez obmedzenia.';}catch{$('#statusText').textContent='lokálna stena';}finally{updateWriteAccess();}
+  try{const r=await fetch('/api/graffiti',{headers:{'X-Writer-Id':visitorId}});if(!r.ok)throw 0;const data=await r.json();state.mode='shared';state.graffiti=data.items;state.hasWritten=WRITE_LIMIT_ENABLED&&Boolean(data.hasWritten);if(state.hasWritten)storeValue(WRITTEN_KEY,'1');else removeStoredValue(WRITTEN_KEY);if(!state.hasWritten)$('#editorNote').textContent=WRITE_LIMIT_ENABLED?'Máš jeden odkaz. Po uložení ho uvidia aj ďalší návštevníci.':'DEV režim: odkazy môžeš pridávať bez obmedzenia.';}catch{}finally{updateWriteAccess();}
 }
 loadWorld();
 function receivePresence(players,{replace=false}={}){
