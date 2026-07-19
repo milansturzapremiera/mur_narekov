@@ -65,7 +65,7 @@ const state = {
   terrain: structuredClone(initialTerrain),
   landing: structuredClone(initialLanding),
   hasWritten: WRITE_LIMIT_ENABLED && storedValue(WRITTEN_KEY) === '1', savingGraffiti: false,
-  mode: 'local', keys: new Set(), last: performance.now(), environmentMode: 'auto', nightMix: automaticNightAmount()
+  mode: 'local', keys: new Set(), last: performance.now(), environmentMode: 'auto', nightMix: automaticNightAmount(), accessGranted: false
 };
 const uid = crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 const EVENT_SESSION_START = Date.now();
@@ -74,9 +74,18 @@ const channel = 'BroadcastChannel' in window ? new BroadcastChannel('mur-narekov
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const mobileViewport = matchMedia('(max-width: 760px)');
 const playerScreenX = () => innerWidth * (mobileViewport.matches ? .5 : .38);
+document.documentElement.classList.add('access-locked');
 
 document.querySelector('#app').innerHTML = `
   <main id="game" aria-label="Múr nárekov, interaktívna prechádzka">
+    <section class="access-gate" id="accessGate" aria-label="Vstup s heslom">
+      <img class="access-gate-poster" src="/assets/access/p_01.png" alt="Múr nárekov 0.01 beta">
+      <form class="access-gate-form" id="accessGateForm" aria-label="Prihlásenie">
+        <label class="sr-only" for="accessPassword">Heslo</label>
+        <div><input id="accessPassword" name="password" type="password" maxlength="128" autocomplete="current-password" placeholder="Heslo" required><button type="submit" aria-label="Vstúpiť">→</button></div>
+        <output id="accessGateStatus" role="status" aria-live="polite"></output>
+      </form>
+    </section>
     <canvas id="world" tabindex="0" aria-label="700 metrov dlhý tehlový múr s odkazmi návštevníkov."></canvas>
     <header class="hud">
       <div class="hud-left">
@@ -178,6 +187,35 @@ const nextTrack = $('#nextTrack');
 const trackArt = audioControl.querySelector('.track-art');
 const trackTitle = $('#trackTitle');
 const trackArtist = $('#trackArtist');
+const accessGate = $('#accessGate');
+const accessGateForm = $('#accessGateForm');
+const accessPassword = $('#accessPassword');
+const accessGateStatus = $('#accessGateStatus');
+const gatedElements = [...$('#game').children].filter(element=>element!==accessGate);
+
+function setAccessGranted(granted) {
+  state.accessGranted=granted;
+  document.documentElement.classList.toggle('access-granted',granted);
+  document.documentElement.classList.toggle('access-locked',!granted);
+  gatedElements.forEach(element=>{element.inert=!granted;});
+  if(granted){accessGate.classList.add('unlocked');accessGate.setAttribute('aria-hidden','true');setTimeout(()=>{accessGate.hidden=true;},460);}
+  else{accessGate.hidden=false;accessGate.classList.remove('unlocked');accessGate.removeAttribute('aria-hidden');accessPassword.focus();}
+}
+
+async function verifyStoredAccess() {
+  try{const response=await fetch('/api/access',{credentials:'same-origin',cache:'no-store'}),data=await response.json().catch(()=>({}));if(response.ok&&data.authenticated)return setAccessGranted(true);accessGateStatus.textContent=data.error||'';accessGateForm.classList.toggle('has-error',Boolean(data.error));}
+  catch{accessGateForm.classList.add('has-error');accessGateStatus.textContent='Prístup sa nepodarilo overiť. Skús to znova.';}
+  accessGateForm.querySelector('button').disabled=false;setAccessGranted(false);
+}
+
+accessGateForm.addEventListener('submit',async event=>{
+  event.preventDefault();const button=accessGateForm.querySelector('button');button.disabled=true;accessGateStatus.textContent='Overujem heslo…';accessGateForm.classList.remove('has-error');
+  try{const response=await fetch('/api/access',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:accessPassword.value})}),data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Heslo sa nepodarilo overiť.');accessPassword.value='';setAccessGranted(true);}
+  catch(error){accessGateForm.classList.add('has-error');accessGateStatus.textContent=error.message;accessPassword.select();button.disabled=false;}
+});
+accessGateForm.querySelector('button').disabled=true;
+verifyStoredAccess();
+
 function applyLandingText(){
   document.querySelectorAll('[data-landing]').forEach(element=>{element.textContent=state.landing[element.dataset.landing]??'';});
   document.querySelectorAll('[data-landing-placeholder]').forEach(element=>{element.placeholder=state.landing[element.dataset.landingPlaceholder]??'';});
@@ -742,6 +780,7 @@ function render(now) {
   if(followedX!==null&&state.followCameraSnap){state.camera=cameraTarget;state.followCameraSnap=false;}else state.camera+=(cameraTarget-state.camera)*smooth(followedX!==null?(reduced?18:7.5):reduced?12:running&&import.meta.env.DEV?10:4.2);
   const currentMeter=Math.min(700,Math.floor(followedX??state.x)+1);
   if(currentMeter!==renderedMeter){renderedMeter=currentMeter;$('#meterValue').textContent=`${currentMeter} – 700`;}
+  if(!state.accessGranted){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,innerWidth,innerHeight);requestAnimationFrame(render);return;}
   syncGraffitiIndex();
   ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,innerWidth,innerHeight);
   drawSky(ctx,state.camera,now);
@@ -842,7 +881,7 @@ setInterval(async()=>{
 },1000);
 
 $('#characterForm').addEventListener('change',e=>{if(e.target.name==='skin')state.skin=e.target.value;drawAvatar();});
-$('#characterForm').addEventListener('submit',e=>{e.preventDefault();startMusic();state.name=$('#playerName').value.trim().slice(0,16);state.nameColor=$('#playerNameColor').value;state.started=true;$('#entry').classList.add('gone');canvas.focus();});
+$('#characterForm').addEventListener('submit',e=>{e.preventDefault();if(!state.accessGranted)return;startMusic();state.name=$('#playerName').value.trim().slice(0,16);state.nameColor=$('#playerNameColor').value;state.started=true;$('#entry').classList.add('gone');canvas.focus();});
 addEventListener('keydown',e=>{if(e.target.matches?.('input, textarea, select')||e.target.isContentEditable)return;const key=e.key.length===1?e.key.toLowerCase():e.key;if(e.key==='Shift'&&!state.edit&&!state.sceneEditing){e.preventDefault();state.running=true;}if(['ArrowLeft','ArrowRight','a','d'].includes(key)&&!state.edit){e.preventDefault();state.keys.add(key);}});
 addEventListener('keyup',e=>{const key=e.key.length===1?e.key.toLowerCase():e.key;if(e.key==='Shift')state.running=false;state.keys.delete(key);});
 addEventListener('blur',()=>{state.running=false;state.keys.clear();state.moving=0;});

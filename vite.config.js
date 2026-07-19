@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 
 const ROOT = process.cwd();
@@ -9,6 +10,11 @@ const EVENTS_FILE = path.join(ROOT, 'src', 'data', 'events.json');
 const TERRAIN_FILE = path.join(ROOT, 'src', 'data', 'terrain.json');
 const LANDING_FILE = path.join(ROOT, 'src', 'data', 'landing.json');
 const ASSET_DIR = path.join(ROOT, 'public', 'assets', 'scene');
+const ACCESS_COOKIE = 'mur_access';
+const localAccessPassword = () => String(process.env.MUR_ACCESS_PASSWORD || 'kreslo');
+const accessToken = password => createHmac('sha256', password).update('mur-narekov-access-v1').digest('hex');
+const safeEqual = (left,right) => { const a=Buffer.from(String(left)),b=Buffer.from(String(right));return a.length===b.length&&timingSafeEqual(a,b); };
+const requestCookie = (req,name) => String(req.headers.cookie||'').split(';').map(value=>value.trim().split('=')).find(([key])=>key===name)?.slice(1).join('=')||'';
 
 function json(res, status, value) {
   res.statusCode = status;
@@ -154,6 +160,13 @@ function sceneEditorPlugin() {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const pathname = new URL(req.url || '/', 'http://localhost').pathname;
+        if(pathname==='/api/access'){
+          const password=localAccessPassword(),authenticated=safeEqual(decodeURIComponent(requestCookie(req,ACCESS_COOKIE)),accessToken(password));
+          res.setHeader('Cache-Control','no-store, max-age=0');
+          if(req.method==='GET')return json(res,200,{authenticated});
+          if(req.method!=='POST')return json(res,405,{error:'Nepovolená metóda.'});
+          try{const body=await readJson(req,2048);if(!safeEqual(String(body.password||'').slice(0,128),password))return json(res,401,{error:'Nesprávne heslo.'});res.setHeader('Set-Cookie',`${ACCESS_COOKIE}=${encodeURIComponent(accessToken(password))}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax`);return json(res,200,{authenticated:true});}catch(error){return json(res,400,{error:error.message||'Operácia zlyhala.'});}
+        }
         if (!pathname.startsWith('/__scene-editor/')) return next();
         if (!isLocal(req)) return json(res, 403, { error: 'Editor zapisuje iba z lokálneho počítača.' });
         if (req.method !== 'POST') return json(res, 405, { error: 'Nepovolená metóda.' });
