@@ -72,7 +72,7 @@ const EVENT_SESSION_START = Date.now();
 const EVENT_PREVIEW_STARTS = new Map();
 const channel = 'BroadcastChannel' in window ? new BroadcastChannel('mur-narekov') : null;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const mobileViewport = matchMedia('(max-width: 760px)');
+const mobileViewport = matchMedia('(max-width: 760px), (pointer: coarse), (any-pointer: coarse)');
 const playerScreenX = () => innerWidth * (mobileViewport.matches ? .5 : .38);
 document.documentElement.classList.add('access-locked');
 
@@ -776,8 +776,9 @@ function render(now) {
     state.x=Math.max(0,Math.min(700,state.x+state.velocity*dt));
     state.stride+=movementEnergy*dt*(running?7.4:4.6);
   }
-  const playerScreen=playerScreenX(),followedEvent=import.meta.env.DEV&&state.sceneEditing&&state.followedEventId?state.events.find(event=>event.id===state.followedEventId&&event.type==='walker'):null,followedState=followedEvent?walkerEventState(followedEvent,wallNow):null;if(followedState)state.followCameraX=followedState.x;else if(followedEvent&&state.followCameraX===null){const a=Number.isFinite(Number(followedEvent.startX))?Number(followedEvent.startX):0,b=Number.isFinite(Number(followedEvent.endX))?Number(followedEvent.endX):700;state.followCameraX=followedEvent.direction==='left'?Math.max(a,b):Math.min(a,b);}const followedX=followedEvent?state.followCameraX:null,viewCenter=innerWidth*.5,desired=followedX!==null?followedX*PX_PER_M-viewCenter:state.x*PX_PER_M-playerScreen,cameraTarget=followedX!==null?desired:Math.max(0,Math.min(700*PX_PER_M-innerWidth,desired));
-  if(followedX!==null&&state.followCameraSnap){state.camera=cameraTarget;state.followCameraSnap=false;}else state.camera+=(cameraTarget-state.camera)*smooth(followedX!==null?(reduced?18:7.5):reduced?12:running&&import.meta.env.DEV?10:4.2);
+  const playerScreen=playerScreenX(),followedEvent=import.meta.env.DEV&&state.sceneEditing&&state.followedEventId?state.events.find(event=>event.id===state.followedEventId&&event.type==='walker'):null,followedState=followedEvent?walkerEventState(followedEvent,wallNow):null;if(followedState)state.followCameraX=followedState.x;else if(followedEvent&&state.followCameraX===null){const a=Number.isFinite(Number(followedEvent.startX))?Number(followedEvent.startX):0,b=Number.isFinite(Number(followedEvent.endX))?Number(followedEvent.endX):700;state.followCameraX=followedEvent.direction==='left'?Math.max(a,b):Math.min(a,b);}const followedX=followedEvent?state.followCameraX:null,viewCenter=innerWidth*.5,viewAnchor=followedX!==null?viewCenter:playerScreen,desired=followedX!==null?followedX*PX_PER_M-viewCenter:state.x*PX_PER_M-playerScreen,worldWidth=700*PX_PER_M,safeZoom=Math.max(1,state.zoom),cameraMin=viewAnchor/safeZoom-viewAnchor,cameraMax=Math.max(cameraMin,worldWidth-viewAnchor-(innerWidth-viewAnchor)/safeZoom),cameraTarget=Math.max(cameraMin,Math.min(cameraMax,desired));
+  const cameraAtBoundary=desired<=cameraMin+.01||desired>=cameraMax-.01;
+  if((followedX!==null&&state.followCameraSnap)||cameraAtBoundary){state.camera=cameraTarget;state.followCameraSnap=false;}else state.camera+=(cameraTarget-state.camera)*smooth(followedX!==null?(reduced?18:7.5):reduced?12:running&&import.meta.env.DEV?10:4.2);
   const currentMeter=Math.min(700,Math.floor(followedX??state.x)+1);
   if(currentMeter!==renderedMeter){renderedMeter=currentMeter;$('#meterValue').textContent=`${currentMeter} – 700`;}
   if(!state.accessGranted){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,innerWidth,innerHeight);requestAnimationFrame(render);return;}
@@ -786,7 +787,7 @@ function render(now) {
   drawSky(ctx,state.camera,now);
   const bands=sceneBands(), ground=bands.wallBottom, wallTop=bands.wallTop, off=state.camera;
   ctx.save();
-  const viewAnchorX=followedX!==null?innerWidth*.5:playerScreen;ctx.translate(viewAnchorX,ground);ctx.scale(state.zoom,state.zoom);ctx.translate(-viewAnchorX,-ground);
+  const viewAnchorX=viewAnchor;ctx.translate(viewAnchorX,ground);ctx.scale(state.zoom,state.zoom);ctx.translate(-viewAnchorX,-ground);
   ctx.save();ctx.beginPath();ctx.rect(0,0,innerWidth,wallTop);ctx.clip();drawSceneLayer(ctx,'behind',off,wallTop,ground,now);ctx.restore();
   brickWall(ctx,off,wallTop,ground);
   drawWallMountedAssets(ctx,off,wallTop,ground,now);
@@ -887,7 +888,10 @@ addEventListener('keyup',e=>{const key=e.key.length===1?e.key.toLowerCase():e.ke
 addEventListener('blur',()=>{state.running=false;state.keys.clear();state.moving=0;});
 document.querySelectorAll('[data-move-x]').forEach(b=>{const end=()=>state.moving=0;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);state.moving=Number(b.dataset.moveX)});b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);b.addEventListener('lostpointercapture',end);b.addEventListener('contextmenu',e=>e.preventDefault());b.addEventListener('selectstart',e=>e.preventDefault());b.addEventListener('dragstart',e=>e.preventDefault());});
 document.querySelectorAll('[data-run]').forEach(button=>{const set=value=>{state.running=value;button.setAttribute('aria-pressed',String(value));};button.addEventListener('pointerdown',e=>{e.preventDefault();button.setPointerCapture(e.pointerId);set(true)});button.addEventListener('pointerup',()=>set(false));button.addEventListener('pointercancel',()=>set(false));button.addEventListener('lostpointercapture',()=>set(false));});
-function setZoom(value){state.targetZoom=Math.max(1,Math.min(1.6,value));document.querySelectorAll('[data-zoom-value]').forEach(output=>{output.textContent=`${Math.round(state.targetZoom*100)}%`;});document.querySelectorAll('[data-zoom]').forEach(button=>{const next=state.targetZoom+Number(button.dataset.zoom);button.disabled=next<.99||next>1.61;});}
+function releaseTouchInput(){state.moving=0;state.running=false;document.querySelectorAll('[data-run]').forEach(button=>button.setAttribute('aria-pressed','false'));}
+addEventListener('orientationchange',releaseTouchInput);
+mobileViewport.addEventListener?.('change',releaseTouchInput);
+function setZoom(value){state.targetZoom=Math.round(Math.max(1,Math.min(1.6,Number(value)||1))*100)/100;if(Math.abs(state.zoom-state.targetZoom)<.002)state.zoom=state.targetZoom;document.querySelectorAll('[data-zoom-value]').forEach(output=>{output.textContent=`${Math.round(state.targetZoom*100)}%`;});document.querySelectorAll('[data-zoom]').forEach(button=>{const next=state.targetZoom+Number(button.dataset.zoom);button.disabled=next<.999||next>1.601;});}
 document.querySelectorAll('[data-zoom]').forEach(button=>button.addEventListener('click',()=>setZoom(state.targetZoom+Number(button.dataset.zoom))));
 setZoom(state.targetZoom);
 const desktopZoom=$('.desktop-zoom'),desktopZoomToggle=$('.desktop-zoom-toggle');
