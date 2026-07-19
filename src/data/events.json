@@ -120,78 +120,14 @@
     "backgroundColor": "#f2eadb"
   },
   {
-    "id": "dcff56ce-997a-4094-b348-fb453ad8019a",
-    "name": "Baf kópia",
-    "type": "text",
-    "visibility": "always",
-    "startAt": "",
-    "startDelaySec": 0,
-    "x": 331.39,
-    "y": 0.953,
-    "messages": [
-      "Baf",
-      "Haf",
-      "Šimečková manka!"
-    ],
-    "sequences": [
-      [
-        "Baf"
-      ],
-      [
-        "Haf"
-      ],
-      [
-        "Šimečková manka!"
-      ]
-    ],
-    "bubblesPerSequence": 1,
-    "sequenceCount": 3,
-    "repeatEvent": true,
-    "bubbleIntervalSec": 0.2,
-    "bubbleDurationSec": 2.5,
-    "repeatEverySec": 5,
-    "widthM": 5,
-    "fontSize": 20,
-    "textColor": "#25211d",
-    "backgroundColor": "#f2eadb"
-  },
-  {
-    "id": "2b7d4cc3-837f-4d59-823d-314beb103427",
-    "name": "kokot kópia kópia",
-    "type": "text",
-    "visibility": "always",
-    "startAt": "",
-    "startDelaySec": 0,
-    "x": 280.01,
-    "y": 0.963,
-    "messages": [
-      "Musí už ebať riadne..."
-    ],
-    "sequences": [
-      [
-        "Musí už ebať riadne..."
-      ]
-    ],
-    "bubblesPerSequence": 1,
-    "sequenceCount": 1,
-    "repeatEvent": true,
-    "bubbleIntervalSec": 1,
-    "bubbleDurationSec": 2.5,
-    "repeatEverySec": 12,
-    "widthM": 5,
-    "fontSize": 20,
-    "textColor": "#25211d",
-    "backgroundColor": "#f2eadb"
-  },
-  {
     "id": "c65cdee8-d568-4939-8712-1fbb741c11b8",
     "name": "Baf kópia kópia",
     "type": "text",
     "visibility": "always",
     "startAt": "",
     "startDelaySec": 0,
-    "x": 73.82,
-    "y": 0.914,
+    "x": 331.38,
+    "y": 0.96,
     "messages": [
       "Baf",
       "Haf",
@@ -223,7 +159,7 @@
     "id": "ded144f0-3b0c-423b-9c99-e2e89038147f",
     "name": "huli",
     "type": "walker",
-    "visibility": "always",
+    "visibility": "night",
     "startAt": "",
     "startDelaySec": 0,
     "src": "/assets/scene/1784399759715-event-huli.png",
@@ -251,5 +187,99 @@
     "speechFontSize": 20,
     "speechTextColor": "#25211d",
     "speechBackgroundColor": "#f2eadb"
+  },
+  {
+    "id": "7191933d-f71c-4674-959b-38acae6d37d7",
+    "name": "kokot kópia",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 330.03,
+    "y": 0.99,
+    "messages": [
+      "Kokot..."
+    ],
+    "sequences": [
+      [
+        "Kokot..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 1,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 1,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 12,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "87b04a03-a1fd-4d0d-b9f0-e30be08f451e",
+    "name": "Baf kópia",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 73.93,
+    "y": 0.97,
+    "messages": [
+      "Baf",
+      "Haf",
+      "Šimečková manka!"
+    ],
+    "sequences": [
+      [
+        "Baf"
+      ],
+      [
+        "Haf"
+      ],
+      [
+        "Šimečková manka!"
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 3,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 0.2,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 5,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "c1ed03bc-9857-443b-aad1-27d8b320b770",
+    "name": "Textová bublina",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 302.35,
+    "y": -0.325,
+    "messages": [
+      "Je to strašne easy,",
+      "nebyť kokot ..."
+    ],
+    "sequences": [
+      [
+        "Je to strašne easy,",
+        "nebyť kokot ..."
+      ]
+    ],
+    "bubblesPerSequence": 2,
+    "sequenceCount": 1,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 15,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
   }
 ]

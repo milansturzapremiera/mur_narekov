@@ -3518,5 +3518,21 @@
     "fps": 6,
     "frameDirection": "horizontal",
     "phase": 0.9131615428030957
+  },
+  {
+    "id": "48920b63-39a4-49a6-8b75-92a3bcfae652",
+    "name": "zajaci",
+    "src": "/assets/scene/1784455646210-zajaci.png",
+    "layer": "front",
+    "visibility": "always",
+    "x": 302.38,
+    "y": 0.016,
+    "widthM": 2.9,
+    "rotation": 0,
+    "animated": false,
+    "frames": 5,
+    "fps": 6,
+    "frameDirection": "horizontal",
+    "phase": 0.8241598774784783
   }
 ]
