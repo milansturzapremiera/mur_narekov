@@ -114,7 +114,7 @@ document.querySelector('#app').innerHTML = `
         </div>
       </div>
     </div>
-    <button class="mobile-ui-toggle" id="mobileUiToggle" type="button" aria-pressed="false" aria-label="Skryť spodné ovládanie">
+    <button class="mobile-ui-toggle" id="mobileUiToggle" type="button" aria-pressed="false" aria-label="Skryť rozhranie">
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.6"></circle><path class="eye-slash" d="m4 4 16 16"></path></svg>
     </button>
     <button class="write-button" id="writeButton" type="button"><span>＋</span> Zanechať odkaz</button>
@@ -935,7 +935,7 @@ document.querySelectorAll('[data-zoom]').forEach(button=>button.addEventListener
 setZoom(state.targetZoom);
 const desktopZoom=$('.desktop-zoom'),desktopZoomToggle=$('.desktop-zoom-toggle');
 const mobileUiToggle=$('#mobileUiToggle');
-function setMobileUiHidden(hidden){document.documentElement.classList.toggle('mobile-ui-hidden',hidden);mobileUiToggle.setAttribute('aria-pressed',String(hidden));mobileUiToggle.setAttribute('aria-label',hidden?'Zobraziť spodné ovládanie':'Skryť spodné ovládanie');}
+function setMobileUiHidden(hidden){document.documentElement.classList.toggle('mobile-ui-hidden',hidden);mobileUiToggle.setAttribute('aria-pressed',String(hidden));mobileUiToggle.setAttribute('aria-label',hidden?'Zobraziť rozhranie':'Skryť rozhranie');if(hidden){setAudioExpanded(false);setGraffitiIndex(false);}}
 mobileUiToggle.addEventListener('click',()=>setMobileUiHidden(!document.documentElement.classList.contains('mobile-ui-hidden')));
 function setDesktopZoomMode(active){desktopZoom.classList.toggle('active',active);document.documentElement.classList.toggle('desktop-zoom-mode',active);desktopZoomToggle.setAttribute('aria-expanded',String(active));desktopZoomToggle.setAttribute('aria-label',active?'Ukončiť zoom a čistý režim':'Otvoriť zoom a čistý režim');if(active)setGraffitiIndex(false);}
 desktopZoomToggle.addEventListener('click',()=>setDesktopZoomMode(!desktopZoom.classList.contains('active')));
