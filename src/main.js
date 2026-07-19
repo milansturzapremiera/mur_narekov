@@ -73,6 +73,7 @@ const EVENT_PREVIEW_STARTS = new Map();
 const channel = 'BroadcastChannel' in window ? new BroadcastChannel('mur-narekov') : null;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const mobileViewport = matchMedia('(max-width: 760px), (pointer: coarse), (any-pointer: coarse)');
+const gameMotionReduced = () => reducedMotion.matches && !mobileViewport.matches;
 const playerScreenX = () => innerWidth * (mobileViewport.matches ? .5 : .38);
 document.documentElement.classList.add('access-locked');
 
@@ -354,7 +355,9 @@ function sceneBands() {
 
 function drawPerson(c, x, ground, scale, p, motion=0, stride=0, walkEnergy=Math.abs(motion)) {
   c.save();c.translate(x,ground);c.scale((p.dir||1)*scale,scale);
-  const energy=reducedMotion.matches?0:Math.min(1,walkEnergy),phase=((stride%(Math.PI*2))+Math.PI*2)%(Math.PI*2),frame=energy?Math.floor(phase/(Math.PI/2))%4:0;
+  // Chôdza je dôležitá spätná väzba ovládania. Pri obmedzenom pohybe ju iba
+  // stlmíme; úplné vypnutie nechávalo hráča na niektorých tabletoch kĺzať.
+  const rawEnergy=Math.min(1,walkEnergy),energy=rawEnergy*(gameMotionReduced()?.45:1),phase=((stride%(Math.PI*2))+Math.PI*2)%(Math.PI*2),frame=rawEnergy>.015?Math.floor(phase/(Math.PI/2))%4:0;
   const sway=[0,1,0,-1][frame]*energy,lift=[0,-2.4,0,-2.4][frame]*energy,skin=SKINS[p.skin]||SKINS.tan;
   c.translate(sway*2.4,lift);c.rotate(sway*.025-Math.sign(motion)*.012*energy);c.lineJoin='round';c.lineCap='round';
 
@@ -442,7 +445,7 @@ function drawSky(c,offset,now) {
   if(night>.001){c.save();c.globalAlpha=night;c.fillStyle=nightSkyGradient;c.fillRect(0,0,innerWidth,innerHeight);c.fillStyle=nightSkyGlow;c.fillRect(0,0,innerWidth,innerHeight*.5);c.restore();}
   if(night>.02){
     const starDrift=(offset*.018)%2600;c.save();c.fillStyle='#f1ecd8';
-    for(let repeat=-1;repeat<=1;repeat++)STAR_FIELD.forEach(star=>{const x=star.x+repeat*2600-starDrift;if(x<-3||x>innerWidth+3)return;const twinkle=reducedMotion.matches?.82:.72+Math.sin(now*.0015+star.phase)*.18;c.globalAlpha=night*twinkle;c.beginPath();c.arc(x,innerHeight*star.y,star.radius,0,Math.PI*2);c.fill();});
+    for(let repeat=-1;repeat<=1;repeat++)STAR_FIELD.forEach(star=>{const x=star.x+repeat*2600-starDrift;if(x<-3||x>innerWidth+3)return;const twinkle=gameMotionReduced()?.82:.72+Math.sin(now*.0015+star.phase)*.18;c.globalAlpha=night*twinkle;c.beginPath();c.arc(x,innerHeight*star.y,star.radius,0,Math.PI*2);c.fill();});
     c.restore();
   }
   const drift=(offset*.045)%2600;
@@ -477,7 +480,7 @@ function resolveLightPoint(light,offset,wallTop,ground) {
 
 function flickerAmount(light,now) {
   if(light.flicker!==true)return 1;
-  if(reducedMotion.matches)return .72;
+  if(gameMotionReduced())return .72;
   const seed=[...String(light.id||'')].reduce((sum,char)=>sum+char.charCodeAt(0),0),step=Math.floor(now/82);
   const raw=Math.sin((step+seed)*12.9898)*43758.5453,noise=raw-Math.floor(raw);
   if(noise>.94)return .05;if(noise>.84)return .38;return .9+noise*.1;
@@ -527,13 +530,13 @@ function walkerEventState(event,wallNow) {
   const left=Math.min(Number.isFinite(Number(event.startX))?Number(event.startX):0,Number.isFinite(Number(event.endX))?Number(event.endX):700),rightEdge=Math.max(Number.isFinite(Number(event.startX))?Number(event.startX):0,Number.isFinite(Number(event.endX))?Number(event.endX):700),movesRight=event.direction!=='left',from=movesRight?left:rightEdge,to=movesRight?rightEdge:left,speed=Math.max(.2,Number(event.speedMps)||4),travel=Math.max(.05,Math.abs(to-from)/speed),cycle=travel+Math.max(0,Number(event.loopDelaySec)||0),run=Math.floor(elapsed/cycle);
   const runCount=Math.max(0,Math.round(Number(event.runCount)||0));if(runCount&&run>=runCount)return null;
   const within=elapsed-run*cycle;if(within>travel)return null;
-  const progress=reducedMotion.matches?.5:within/travel;
+  const progress=gameMotionReduced()?.5:within/travel;
   return{x:from+(to-from)*progress,dir:to>=from?1:-1,progress};
 }
 
 function activeWalkerSpeech(event,wallNow) {
   if(event.speechEnabled!==true)return null;const messages=(Array.isArray(event.speechMessages)?event.speechMessages:[]).map(String).filter(Boolean);if(!messages.length)return null;
-  const elapsed=(wallNow-eventStartTime(event))/1000-Math.max(0,Number(event.speechDelaySec)||0),duration=Math.max(.5,Number(event.speechDurationSec)||3),every=Math.max(duration+.25,Number(event.speechEverySec)||12);if(elapsed<0)return null;const slot=Math.floor(elapsed/every),age=elapsed-slot*every;if(age>duration)return null;const edge=Math.min(.2,duration*.2),opacity=reducedMotion.matches?1:Math.min(1,age/edge,(duration-age)/edge);return{text:messages[slot%messages.length],opacity};
+  const elapsed=(wallNow-eventStartTime(event))/1000-Math.max(0,Number(event.speechDelaySec)||0),duration=Math.max(.5,Number(event.speechDurationSec)||3),every=Math.max(duration+.25,Number(event.speechEverySec)||12);if(elapsed<0)return null;const slot=Math.floor(elapsed/every),age=elapsed-slot*every;if(age>duration)return null;const edge=Math.min(.2,duration*.2),opacity=gameMotionReduced()?1:Math.min(1,age/edge,(duration-age)/edge);return{text:messages[slot%messages.length],opacity};
 }
 
 function drawWalkerSpeech(c,event,speech,x,anchorY) {
@@ -545,7 +548,7 @@ function drawEventWalker(c,event,x,baseline,offset,now,direction=1,speech=null) 
   const distance=Math.abs(x*PX_PER_M-offset-innerWidth*.5),image=sceneImage(event.src,distance);if(!image.complete||!image.naturalWidth)return;
   const frames=Math.max(2,Math.min(60,Math.round(Number(event.frames)||5))),animated=event.animated===true&&frames>1,vertical=event.frameDirection==='vertical';
   const sourceWidth=animated&&!vertical?image.naturalWidth/frames:image.naturalWidth,sourceHeight=animated&&vertical?image.naturalHeight/frames:image.naturalHeight;
-  const frame=animated&&!reducedMotion.matches?Math.floor(now*Math.max(.5,Number(event.fps)||6)/1000)%frames:0,sourceX=animated&&!vertical?frame*sourceWidth:0,sourceY=animated&&vertical?frame*sourceHeight:0;
+  const frame=animated&&!gameMotionReduced()?Math.floor(now*Math.max(.5,Number(event.fps)||6)/1000)%frames:0,sourceX=animated&&!vertical?frame*sourceWidth:0,sourceY=animated&&vertical?frame*sourceHeight:0;
   const width=Math.max(.2,Number(event.widthM)||3)*PX_PER_M,height=width*sourceHeight/sourceWidth,screenX=x*PX_PER_M-offset,dir=direction<0?1:-1;
   if(screenX+width<0||screenX-width>innerWidth)return;c.save();c.globalAlpha=visibility;c.translate(screenX,baseline);c.scale(dir,1);c.drawImage(image,sourceX,sourceY,sourceWidth,sourceHeight,-width/2,-height,width,height);
   if(import.meta.env.DEV&&state.sceneEditing&&!state.followedEventId&&state.editorLayer==='events'&&event.id===state.selectedEventId){c.strokeStyle='#f0c849';c.lineWidth=2;c.setLineDash([7,5]);c.strokeRect(-width/2,-height,width,height);c.setLineDash([]);}c.restore();drawWalkerSpeech(c,event,speech,screenX,baseline-height-8);
@@ -555,7 +558,7 @@ function activeTextBubbles(event,wallNow) {
   const start=eventStartTime(event),elapsed=(wallNow-start)/1000;if(elapsed<0)return[];
   const count=Math.max(1,Math.min(20,Math.round(Number(event.bubblesPerSequence)||1))),interval=Math.max(.2,Number(event.bubbleIntervalSec)||3),duration=Math.max(.5,Number(event.bubbleDurationSec)||2.5),span=(count-1)*interval+duration,repeat=Math.max(span,Number(event.repeatEverySec)||span),sequence=Math.floor(elapsed/repeat),sequenceCount=Math.max(1,Math.round(Number(event.sequenceCount)||1));if(event.repeatEvent===false&&sequence>=sequenceCount)return[];
   const within=elapsed-sequence*repeat,legacy=(Array.isArray(event.messages)?event.messages:[]).map(String),configured=Array.isArray(event.sequences)?event.sequences:[],messages=configured.length?(configured[sequence%configured.length]||[]):legacy;if(!messages.some(Boolean))return[];
-  const active=[];for(let index=0;index<count;index++){const age=within-index*interval,text=String(messages[index]??legacy[(sequence*count+index)%Math.max(1,legacy.length)]??'').trim();if(age<0||age>duration||!text)continue;const edge=Math.min(.18,duration*.2),opacity=reducedMotion.matches?1:Math.min(1,age/edge,(duration-age)/edge);active.push({text,opacity,index});}return active;
+  const active=[];for(let index=0;index<count;index++){const age=within-index*interval,text=String(messages[index]??legacy[(sequence*count+index)%Math.max(1,legacy.length)]??'').trim();if(age<0||age>duration||!text)continue;const edge=Math.min(.18,duration*.2),opacity=gameMotionReduced()?1:Math.min(1,age/edge,(duration-age)/edge);active.push({text,opacity,index});}return active;
 }
 
 function wrapBubbleText(c,text,maxWidth) {
@@ -637,7 +640,7 @@ function drawSceneItem(c, item, offset, wallTop, ground, now) {
     const sourceHeight = vertical ? image.naturalHeight / frames : image.naturalHeight;
     const fps = Math.max(.5, Math.min(30, Number(item.fps) || 6));
     const phase = Math.max(0, Math.min(1, Number(item.phase) || 0));
-    const frame = animated && !reducedMotion.matches ? Math.floor(now * fps / 1000 + phase * frames) % frames : 0;
+    const frame = animated && !gameMotionReduced() ? Math.floor(now * fps / 1000 + phase * frames) % frames : 0;
     const sourceX = animated && !vertical ? frame * sourceWidth : 0;
     const sourceY = animated && vertical ? frame * sourceHeight : 0;
     const displaySourceWidth = animated ? sourceWidth : image.naturalWidth;
@@ -760,13 +763,13 @@ function render(now) {
   const wallNow=Date.now();
   const dt=Math.min((now-state.last)/1000,.05); state.last=now;
   const smooth=rate=>1-Math.exp(-rate*dt);
-  state.zoom+=(state.targetZoom-state.zoom)*smooth(reducedMotion.matches?18:8);
-  state.nightMix+=(environmentTarget(now)-state.nightMix)*smooth(reducedMotion.matches?18:1.8);
+  state.zoom+=(state.targetZoom-state.zoom)*smooth(gameMotionReduced()?18:8);
+  state.nightMix+=(environmentTarget(now)-state.nightMix)*smooth(gameMotionReduced()?18:1.8);
   let inputX=(state.keys.has('ArrowRight')||state.keys.has('d')?1:0)-(state.keys.has('ArrowLeft')||state.keys.has('a')?1:0)+state.moving;
   inputX=Math.max(-1,Math.min(1,inputX));
   if(state.edit||state.sceneEditing)inputX=0;
   const inputLength=Math.abs(inputX);
-  const reduced=reducedMotion.matches, running=state.running&&inputLength>0&&!state.edit&&!state.sceneEditing, horizontalSpeed=running?9.2*DEV_RUN_MULTIPLIER:5.8;
+  const reduced=gameMotionReduced(), running=state.running&&inputLength>0&&!state.edit&&!state.sceneEditing, horizontalSpeed=running?9.2*DEV_RUN_MULTIPLIER:5.8;
   const acceleration=reduced?18:(running&&import.meta.env.DEV?14:running?6.4:7.5), drag=reduced?22:10;
   state.velocity+=(inputX*horizontalSpeed-state.velocity)*smooth(inputX?acceleration:drag);
   if(Math.abs(state.velocity)<.015)state.velocity=0;
