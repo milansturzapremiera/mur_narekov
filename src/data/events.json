@@ -98,8 +98,8 @@
     "visibility": "always",
     "startAt": "",
     "startDelaySec": 0,
-    "x": 279.01,
-    "y": 0.963,
+    "x": 279.53,
+    "y": 0.976,
     "messages": [
       "Musí už ebať riadne..."
     ],
@@ -176,13 +176,42 @@
     "frames": 5,
     "fps": 6,
     "frameDirection": "horizontal",
-    "speechEnabled": false,
+    "speechEnabled": true,
     "speechMessages": [
-      "Ahoj!"
+      "Voda...",
+      "Pôda...",
+      "TIPOS!",
+      "Ľes...",
+      "Ikebana...",
+      "Danko...fňuk..."
     ],
+    "speechSequences": [
+      [
+        "Voda..."
+      ],
+      [
+        "Pôda..."
+      ],
+      [
+        "TIPOS!"
+      ],
+      [
+        "Ľes..."
+      ],
+      [
+        "Ikebana..."
+      ],
+      [
+        "Danko...fňuk..."
+      ]
+    ],
+    "speechBubblesPerSequence": 1,
+    "speechSequenceCount": 6,
+    "speechRepeatEvent": true,
     "speechDelaySec": 2,
-    "speechEverySec": 12,
-    "speechDurationSec": 3,
+    "speechBubbleIntervalSec": 3,
+    "speechBubbleDurationSec": 3,
+    "speechRepeatEverySec": 9,
     "speechWidthM": 5,
     "speechFontSize": 20,
     "speechTextColor": "#25211d",
@@ -262,13 +291,13 @@
     "x": 302.35,
     "y": -0.325,
     "messages": [
-      "Je to strašne easy,",
-      "nebyť kokot ..."
+      "Je to strašne easy, nebyť kokot ...",
+      ""
     ],
     "sequences": [
       [
-        "Je to strašne easy,",
-        "nebyť kokot ..."
+        "Je to strašne easy, nebyť kokot ...",
+        ""
       ]
     ],
     "bubblesPerSequence": 2,
@@ -277,6 +306,624 @@
     "bubbleIntervalSec": 3,
     "bubbleDurationSec": 2.5,
     "repeatEverySec": 15,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "9bf1bade-554f-4698-834e-bd1834ff992f",
+    "name": "1500 pokuta langoš",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 15,
+    "x": 84.61,
+    "y": 0.744,
+    "messages": [
+      "takže chýbajúca diakritika...",
+      "tak to bude za 1500 eur..."
+    ],
+    "sequences": [
+      [
+        "takže chýbajúca diakritika...",
+        "tak to bude za 1500 eur..."
+      ]
+    ],
+    "bubblesPerSequence": 2,
+    "sequenceCount": 1,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 3,
+    "repeatEverySec": 10,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "6d533dea-c1be-4c67-b649-48884bf9f64d",
+    "name": "Roboot",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 125.91,
+    "y": 1.083,
+    "messages": [
+      "Ten pán, čo robí kliky je čistý Robocot..."
+    ],
+    "sequences": [
+      [
+        "Ten pán, čo robí kliky je čistý Robocot..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 1,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 10,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "939641c8-d0e2-4d31-8877-63f3bbc15711",
+    "name": "Robo",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 20,
+    "x": 139.1,
+    "y": 1.04,
+    "messages": [
+      "Šimečka...",
+      "Radičová...",
+      "Ódor...",
+      "Matovič...",
+      "Skurvené poké...",
+      "Šimečková manka...",
+      "Ešte 1000 a jebem na to..."
+    ],
+    "sequences": [
+      [
+        "Šimečka..."
+      ],
+      [
+        "Radičová..."
+      ],
+      [
+        "Ódor..."
+      ],
+      [
+        "Matovič..."
+      ],
+      [
+        "Skurvené poké..."
+      ],
+      [
+        "Šimečková manka..."
+      ],
+      [
+        "Ešte 1000 a jebem na to..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 7,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 6,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "69a46cc0-e543-4674-95c5-02f2a6dd3fb9",
+    "name": "Kali",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 20,
+    "x": 142.2,
+    "y": 0.595,
+    "messages": [
+      "Na ten múr som dal špeciálnu ochranu proti grafitom...",
+      "Neviem prečo všetkým vadí, že som transformoval tehlový múr na tehlový múr...",
+      "Mal som dať do Kukurice záchody bez splachovania a mohli byť aj Miele chladničky...",
+      "Šéfe už máš cez 5000 klikov...",
+      "Mohol som byť v Dubaji a miesto toho musím vysvetlovať vešiak za 300...",
+      "Prečo ma nikto nemá rád..."
+    ],
+    "sequences": [
+      [
+        "Na ten múr som dal špeciálnu ochranu proti grafitom..."
+      ],
+      [
+        "Neviem prečo všetkým vadí, že som transformoval tehlový múr na tehlový múr..."
+      ],
+      [
+        "Mal som dať do Kukurice záchody bez splachovania a mohli byť aj Miele chladničky..."
+      ],
+      [
+        "Šéfe už máš cez 5000 klikov..."
+      ],
+      [
+        "Mohol som byť v Dubaji a miesto toho musím vysvetlovať vešiak za 300..."
+      ],
+      [
+        "Prečo ma nikto nemá rád..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 6,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 4,
+    "repeatEverySec": 8,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "5e7b223a-6b1a-4a18-8d6d-d1cfe1e12838",
+    "name": "džemíky",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 12,
+    "x": 203.3,
+    "y": 0.723,
+    "messages": [
+      "Len dúfam, že si nerobíte vlastné džemíky...",
+      "...knihy sú doménou väčšinou bohatších vrstiev obyvateľstva...",
+      "...nechceš si kúpiť džemík? Alebo obraz? Vidíš toho holuba?",
+      "Budúci víkend mám výstavu obrazov, vieš som tak trochu maliar...",
+      "Ak kúpite bez bločku, dám ti malú zľavičku...no táák...."
+    ],
+    "sequences": [
+      [
+        "Len dúfam, že si nerobíte vlastné džemíky..."
+      ],
+      [
+        "...knihy sú doménou väčšinou bohatších vrstiev obyvateľstva..."
+      ],
+      [
+        "...nechceš si kúpiť džemík? Alebo obraz? Vidíš toho holuba?"
+      ],
+      [
+        "Budúci víkend mám výstavu obrazov, vieš som tak trochu maliar..."
+      ],
+      [
+        "Ak kúpite bez bločku, dám ti malú zľavičku...no táák...."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 5,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 3,
+    "repeatEverySec": 8,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "f9bfcffa-f4f2-414d-bd1a-d8a36a659e3c",
+    "name": "holub",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 12,
+    "x": 197.25,
+    "y": 0.987,
+    "messages": [
+      "Kúpte si prosím niekto ten zasraný džem nech už sklapne...",
+      "Hrkúúú...Hrkúúú...Hrkúúrva nech už sklapne...",
+      "Ešte raz mi ponúkne obraz a hodím si to pod auto...",
+      "Hrkúúú...Hrkúúú..."
+    ],
+    "sequences": [
+      [
+        "Kúpte si prosím niekto ten zasraný džem nech už sklapne..."
+      ],
+      [
+        "Hrkúúú...Hrkúúú...Hrkúúrva nech už sklapne..."
+      ],
+      [
+        "Ešte raz mi ponúkne obraz a hodím si to pod auto..."
+      ],
+      [
+        "Hrkúúú...Hrkúúú..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 4,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 5,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "c4059eb5-6629-4bd9-9552-9327fb543e27",
+    "name": "Textová bublina",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 6,
+    "x": 275.91,
+    "y": 0.765,
+    "messages": [
+      "Políčko 6...tam ide modrá farba...",
+      "Políčko 8...tam ide biela...",
+      "Krásna Slovianska práca...",
+      "Políčko 18...tam ide hnedá...",
+      "Políčko 12...tam ide tyrkysová...",
+      "Mala by som spraviť výstavu...som tak šikovná..."
+    ],
+    "sequences": [
+      [
+        "Políčko 6...tam ide modrá farba..."
+      ],
+      [
+        "Políčko 8...tam ide biela..."
+      ],
+      [
+        "Krásna Slovianska práca..."
+      ],
+      [
+        "Políčko 18...tam ide hnedá..."
+      ],
+      [
+        "Políčko 12...tam ide tyrkysová..."
+      ],
+      [
+        "Mala by som spraviť výstavu...som tak šikovná..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 6,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 7,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "ea5fb8e8-bb9c-49ad-98e2-5b556480df85",
+    "name": "machalaalal",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 5,
+    "x": 285.62,
+    "y": 0.588,
+    "messages": [
+      "Nemáš chuť na teplého psa?",
+      "S kečupom chutí lepšie...",
+      "Tá busta, čo mám? Iba fejk...",
+      "Včera som si kúpil I-telefón a hneď nainštaloval Drtič...",
+      "Aristotelés bol kokot..."
+    ],
+    "sequences": [
+      [
+        "Nemáš chuť na teplého psa?"
+      ],
+      [
+        "S kečupom chutí lepšie..."
+      ],
+      [
+        "Tá busta, čo mám? Iba fejk..."
+      ],
+      [
+        "Včera som si kúpil I-telefón a hneď nainštaloval Drtič..."
+      ],
+      [
+        "Aristotelés bol kokot..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 5,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 7,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "d69a328d-86e2-41c9-b82d-6ca3090debfd",
+    "name": "Biely domcek",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 344.62,
+    "y": 0.577,
+    "messages": [
+      "Vidíš...jedna čiarka, potom druhá, čomu nerozumieš?!",
+      "Kriedu drž vždy v pravej ruke...a pekne ju vystri...",
+      "Čo je SIX-SEVEN?"
+    ],
+    "sequences": [
+      [
+        "Vidíš...jedna čiarka, potom druhá, čomu nerozumieš?!"
+      ],
+      [
+        "Kriedu drž vždy v pravej ruke...a pekne ju vystri..."
+      ],
+      [
+        "Čo je SIX-SEVEN?"
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 3,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 3,
+    "repeatEverySec": 9,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "52762dde-00dd-4d8d-be91-6594a078e8df",
+    "name": "Textová bublina",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 12,
+    "x": 347.26,
+    "y": 0.679,
+    "messages": [
+      "Kebab...",
+      "Jebem ti Aláha...teda domček!",
+      "Večer si zahrám CS-ko..."
+    ],
+    "sequences": [
+      [
+        "Kebab..."
+      ],
+      [
+        "Jebem ti Aláha...teda domček!"
+      ],
+      [
+        "Večer si zahrám CS-ko..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 3,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 3,
+    "repeatEverySec": 9,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "7b76b0c2-1b5c-43b1-8d22-80f87a6b76d5",
+    "name": "Textová bublina",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 8,
+    "x": 395.94,
+    "y": -0.279,
+    "messages": [
+      "Geeeeeeeryyyyyyy!!!!",
+      "Kde si Geryyyyy?!",
+      "Tatinoooo dostal novú hračku...AHa...",
+      "Dokonca som k nej dostal aj náboje...",
+      "Pozriiii Geeeeryyyy na tu krááásnu krabičku...",
+      "Geeeeeeeryyyyyyy!!!! Je čas na arašídové masieľko....",
+      "Ideme si otvoriť Drtič a pozrieme, čo tam je za ponuku...",
+      "Geeeeeeeryyyyyyy, prestaň! Masieľko už došlo..."
+    ],
+    "sequences": [
+      [
+        "Geeeeeeeryyyyyyy!!!!"
+      ],
+      [
+        "Kde si Geryyyyy?!"
+      ],
+      [
+        "Tatinoooo dostal novú hračku...AHa..."
+      ],
+      [
+        "Dokonca som k nej dostal aj náboje..."
+      ],
+      [
+        "Pozriiii Geeeeryyyy na tu krááásnu krabičku..."
+      ],
+      [
+        "Geeeeeeeryyyyyyy!!!! Je čas na arašídové masieľko...."
+      ],
+      [
+        "Ideme si otvoriť Drtič a pozrieme, čo tam je za ponuku..."
+      ],
+      [
+        "Geeeeeeeryyyyyyy, prestaň! Masieľko už došlo..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 8,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 3,
+    "repeatEverySec": 8,
+    "widthM": 7.1,
+    "fontSize": 33,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "c57eab5a-ea6f-48af-bfb3-083c786367e9",
+    "name": "Textová bublina",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 487.64,
+    "y": 0.744,
+    "messages": [
+      "Kto to zavolá šéfovi?"
+    ],
+    "sequences": [
+      [
+        "Kto to zavolá šéfovi?"
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 1,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 9,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "76641123-f925-4149-ba37-affed1f52d00",
+    "name": "glu",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 550.1,
+    "y": 0.677,
+    "messages": [
+      "Antilopky...",
+      "Nie priateľský, nepriateľský...dopiche ja sa to nikdy nenaučím...",
+      "Plameniaky...",
+      "\"Grrrrg\"....ťažký obedík...",
+      "Vlastný názor....Andrew Tate...Kuchyňa...Posilka...",
+      "Slovenské Povstanie....nikde inde nebolo tak veľké..."
+    ],
+    "sequences": [
+      [
+        "Antilopky..."
+      ],
+      [
+        "Nie priateľský, nepriateľský...dopiche ja sa to nikdy nenaučím..."
+      ],
+      [
+        "Plameniaky..."
+      ],
+      [
+        "\"Grrrrg\"....ťažký obedík..."
+      ],
+      [
+        "Vlastný názor....Andrew Tate...Kuchyňa...Posilka..."
+      ],
+      [
+        "Slovenské Povstanie....nikde inde nebolo tak veľké..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 6,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 3,
+    "repeatEverySec": 9,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "3a5ec7b3-49e9-4dbb-b1b8-887404094a9a",
+    "name": "Textová bublina",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 553.79,
+    "y": 0.753,
+    "messages": [
+      "Že som ja kokot nezostal pri Minecrafte...",
+      "Free ANDREW TATE !",
+      "Musí vedieť, kde je jej miesto...to je základ...",
+      "S týmto kokotom to tu už nedávam..."
+    ],
+    "sequences": [
+      [
+        "Že som ja kokot nezostal pri Minecrafte..."
+      ],
+      [
+        "Free ANDREW TATE !"
+      ],
+      [
+        "Musí vedieť, kde je jej miesto...to je základ..."
+      ],
+      [
+        "S týmto kokotom to tu už nedávam..."
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 4,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 3,
+    "repeatEverySec": 12,
+    "widthM": 5,
+    "fontSize": 20,
+    "textColor": "#25211d",
+    "backgroundColor": "#f2eadb"
+  },
+  {
+    "id": "37439553-e94e-4e34-ba4d-5d8685269033",
+    "name": "Textová bublina",
+    "type": "text",
+    "visibility": "always",
+    "startAt": "",
+    "startDelaySec": 0,
+    "x": 556.48,
+    "y": 0.95,
+    "messages": [
+      "Čurilovci !",
+      "Haf!",
+      "Mňau!",
+      "Ozempic!"
+    ],
+    "sequences": [
+      [
+        "Čurilovci !"
+      ],
+      [
+        "Haf!"
+      ],
+      [
+        "Mňau!"
+      ],
+      [
+        "Ozempic!"
+      ]
+    ],
+    "bubblesPerSequence": 1,
+    "sequenceCount": 4,
+    "repeatEvent": true,
+    "bubbleIntervalSec": 3,
+    "bubbleDurationSec": 2.5,
+    "repeatEverySec": 10,
     "widthM": 5,
     "fontSize": 20,
     "textColor": "#25211d",

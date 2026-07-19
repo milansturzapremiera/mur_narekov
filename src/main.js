@@ -61,7 +61,7 @@ const state = {
   started: false, running: false, x: 0, lane: .5, camera: 0, dir: 1, moving: 0, velocity: 0, stride: 0, zoom: 1, targetZoom: 1,
   skin: 'tan', name: '', nameColor: '#f0c849',
   graffiti: [], others: [], edit: false, targetY: .5, targetX: 0, positionU: .5, section: 0, angle: 0,
-  sceneItems: structuredClone(initialScene), lightSources: structuredClone(initialLights), events: structuredClone(initialEvents), selectedSceneId: null, selectedLightId: null, selectedEventId: null, followedEventId: null, followCameraX: null, followCameraSnap: false, editorLayer: 'assets', sceneEditing: false,
+  sceneItems: structuredClone(initialScene), lightSources: structuredClone(initialLights), events: structuredClone(initialEvents), selectedSceneId: null, selectedLightId: null, selectedEventId: null, followedEventId: null, followCameraX: null, followCameraSnap: false, devFreeCamera: false, devCameraX: 0, editorLayer: 'assets', sceneEditing: false,
   terrain: structuredClone(initialTerrain),
   landing: structuredClone(initialLanding),
   hasWritten: WRITE_LIMIT_ENABLED && storedValue(WRITTEN_KEY) === '1', savingGraffiti: false,
@@ -458,7 +458,11 @@ function environmentTarget(now) {
   if(now-lastEnvironmentClockCheck>30000){lastEnvironmentClockCheck=now;automaticNightTarget=automaticNightAmount();}
   return automaticNightTarget;
 }
-function visibilityAmount(mode) { return mode==='day'?1-state.nightMix:mode==='night'?state.nightMix:1; }
+function visibilityAmount(mode) {
+  if(mode!=='day'&&mode!=='night')return 1;
+  const nightVisible=state.environmentMode==='night'||(state.environmentMode==='auto'&&automaticNightTarget>=.5);
+  return mode==='night'?(nightVisible?1:0):(nightVisible?0:1);
+}
 
 function drawNightShade(c,amount) {
   if(amount<=.001)return;
@@ -534,16 +538,41 @@ function walkerEventState(event,wallNow) {
   return{x:from+(to-from)*progress,dir:to>=from?1:-1,progress};
 }
 
-function activeWalkerSpeech(event,wallNow) {
-  if(event.speechEnabled!==true)return null;const messages=(Array.isArray(event.speechMessages)?event.speechMessages:[]).map(String).filter(Boolean);if(!messages.length)return null;
-  const elapsed=(wallNow-eventStartTime(event))/1000-Math.max(0,Number(event.speechDelaySec)||0),duration=Math.max(.5,Number(event.speechDurationSec)||3),every=Math.max(duration+.25,Number(event.speechEverySec)||12);if(elapsed<0)return null;const slot=Math.floor(elapsed/every),age=elapsed-slot*every;if(age>duration)return null;const edge=Math.min(.2,duration*.2),opacity=gameMotionReduced()?1:Math.min(1,age/edge,(duration-age)/edge);return{text:messages[slot%messages.length],opacity};
+function scenePlaybackState(scene,wallNow) {
+  const elapsed=(wallNow-eventStartTime(scene))/1000;if(elapsed<0)return null;
+  const duration=Math.max(1,Number(scene.durationSec)||20),cycle=Math.max(duration,Number(scene.repeatEverySec)||duration),run=Math.floor(elapsed/cycle);
+  if(scene.repeatEvent===false&&run>0)return null;
+  const time=elapsed-run*cycle;if(time>duration)return null;
+  return{time,duration,run};
+}
+
+function sceneActorState(actor,time) {
+  const start=Number(actor.startX)||0,end=Number.isFinite(Number(actor.endX))?Number(actor.endX):start,moveAt=Math.max(0,Number(actor.moveStartSec)||0),moveDuration=Math.max(.1,Number(actor.moveDurationSec)||.1);
+  let progress=Math.max(0,Math.min(1,(time-moveAt)/moveDuration));if(actor.easing!=='linear')progress=progress*progress*(3-2*progress);
+  return{x:start+(end-start)*progress,dir:Math.abs(end-start)>.001?(end>=start?1:-1):actor.facing==='left'?-1:1,progress};
+}
+
+function activeSceneCue(scene,actorId,time) {
+  const cues=(Array.isArray(scene.cues)?scene.cues:[]).filter(cue=>cue.actorId===actorId&&time>=Number(cue.atSec||0)&&time<=Number(cue.atSec||0)+Math.max(.5,Number(cue.durationSec)||3));if(!cues.length)return null;
+  const cue=cues[cues.length-1],age=time-Number(cue.atSec||0),duration=Math.max(.5,Number(cue.durationSec)||3),edge=Math.min(.18,duration*.2),opacity=gameMotionReduced()?1:Math.min(1,age/edge,(duration-age)/edge);
+  return{cue,speech:{text:String(cue.text||''),opacity}};
+}
+
+function activeWalkerSpeeches(event,wallNow) {
+  if(event.speechEnabled!==true)return[];
+  const legacy=(Array.isArray(event.speechMessages)?event.speechMessages:[]).map(String),configured=Array.isArray(event.speechSequences)?event.speechSequences:[];
+  const count=Math.max(1,Math.min(20,Math.round(Number(event.speechBubblesPerSequence)||1))),sequenceCount=Math.max(1,Math.min(50,Math.round(Number(event.speechSequenceCount)||configured.length||legacy.length||1)));
+  const elapsed=(wallNow-eventStartTime(event))/1000-Math.max(0,Number(event.speechDelaySec)||0),interval=Math.max(.2,Number(event.speechBubbleIntervalSec)||3),duration=Math.max(.5,Number(event.speechBubbleDurationSec??event.speechDurationSec)||3),span=(count-1)*interval+duration,repeat=Math.max(span,Number(event.speechRepeatEverySec??event.speechEverySec)||12);if(elapsed<0)return[];
+  const sequence=Math.floor(elapsed/repeat);if(event.speechRepeatEvent===false&&sequence>=sequenceCount)return[];
+  const within=elapsed-sequence*repeat,messages=configured.length?(configured[sequence%configured.length]||[]):legacy;if(!messages.some(Boolean))return[];
+  const active=[];for(let index=0;index<count;index++){const age=within-index*interval,text=String(messages[index]??legacy[(sequence*count+index)%Math.max(1,legacy.length)]??'').trim();if(age<0||age>duration||!text)continue;const edge=Math.min(.2,duration*.2),opacity=gameMotionReduced()?1:Math.min(1,age/edge,(duration-age)/edge);active.push({text,opacity,index});}return active;
 }
 
 function drawWalkerSpeech(c,event,speech,x,anchorY) {
   if(!speech)return;const fontSize=Math.max(12,Math.min(42,Number(event.speechFontSize)||20)),maxWidth=Math.max(120,Math.min(520,(Number(event.speechWidthM)||5)*PX_PER_M)),padding=Math.max(10,fontSize*.65);c.save();c.globalAlpha=visibilityAmount(event.visibility)*speech.opacity;c.font=`700 ${fontSize}px "Barlow Condensed",sans-serif`;c.textBaseline='middle';c.textAlign='left';const lines=wrapBubbleText(c,speech.text,maxWidth-padding*2),lineHeight=fontSize*1.16,textWidth=Math.max(...lines.map(line=>c.measureText(line).width),40),width=Math.min(maxWidth,textWidth+padding*2),height=lines.length*lineHeight+padding*1.5,left=x-width/2,top=anchorY-height-14;c.fillStyle=event.speechBackgroundColor||'#f2eadb';c.strokeStyle=event.speechTextColor||'#25211d';c.lineWidth=2;c.beginPath();c.roundRect(left,top,width,height,Math.min(14,fontSize*.55));c.fill();c.stroke();c.beginPath();c.moveTo(x-10,top+height-1);c.lineTo(x,anchorY);c.lineTo(x+12,top+height-1);c.closePath();c.fill();c.stroke();c.fillStyle=event.speechTextColor||'#25211d';lines.forEach((line,index)=>c.fillText(line,left+padding,top+padding*.75+lineHeight*(index+.5)));c.restore();
 }
 
-function drawEventWalker(c,event,x,baseline,offset,now,direction=1,speech=null) {
+function drawEventWalker(c,event,x,baseline,offset,now,direction=1,speeches=[]) {
   const visibility=visibilityAmount(event.visibility);if(visibility<=.001)return;
   const distance=Math.abs(x*PX_PER_M-offset-innerWidth*.5),image=sceneImage(event.src,distance);if(!image.complete||!image.naturalWidth)return;
   const frames=Math.max(2,Math.min(60,Math.round(Number(event.frames)||5))),animated=event.animated===true&&frames>1,vertical=event.frameDirection==='vertical';
@@ -551,7 +580,7 @@ function drawEventWalker(c,event,x,baseline,offset,now,direction=1,speech=null) 
   const frame=animated&&!gameMotionReduced()?Math.floor(now*Math.max(.5,Number(event.fps)||6)/1000)%frames:0,sourceX=animated&&!vertical?frame*sourceWidth:0,sourceY=animated&&vertical?frame*sourceHeight:0;
   const width=Math.max(.2,Number(event.widthM)||3)*PX_PER_M,height=width*sourceHeight/sourceWidth,screenX=x*PX_PER_M-offset,dir=direction<0?1:-1;
   if(screenX+width<0||screenX-width>innerWidth)return;c.save();c.globalAlpha=visibility;c.translate(screenX,baseline);c.scale(dir,1);c.drawImage(image,sourceX,sourceY,sourceWidth,sourceHeight,-width/2,-height,width,height);
-  if(import.meta.env.DEV&&state.sceneEditing&&!state.followedEventId&&state.editorLayer==='events'&&event.id===state.selectedEventId){c.strokeStyle='#f0c849';c.lineWidth=2;c.setLineDash([7,5]);c.strokeRect(-width/2,-height,width,height);c.setLineDash([]);}c.restore();drawWalkerSpeech(c,event,speech,screenX,baseline-height-8);
+  if(import.meta.env.DEV&&state.sceneEditing&&!state.followedEventId&&state.editorLayer==='events'&&event.id===state.selectedEventId){c.strokeStyle='#f0c849';c.lineWidth=2;c.setLineDash([7,5]);c.strokeRect(-width/2,-height,width,height);c.setLineDash([]);}c.restore();(Array.isArray(speeches)?speeches:speeches?[speeches]:[]).forEach(speech=>drawWalkerSpeech(c,event,speech,screenX,baseline-height-8-speech.index*8));
 }
 
 function activeTextBubbles(event,wallNow) {
@@ -572,7 +601,7 @@ function drawTextBubble(c,event,bubble,offset,wallTop,ground) {
 }
 
 function drawEventGizmos(c,offset,wallTop,ground) {
-  if(!import.meta.env.DEV||!state.sceneEditing||state.followedEventId||state.editorLayer!=='events')return;state.events.forEach(event=>{const selected=event.id===state.selectedEventId;c.save();c.fillStyle=selected?'#f0c849':'rgba(240,201,73,.72)';c.strokeStyle='#25211d';c.lineWidth=2;if(event.type==='text'){const x=(Number(event.x)||0)*PX_PER_M-offset,y=wallTop+(Number(event.y)||0)*(ground-wallTop);c.beginPath();c.arc(x,y,selected?7:4,0,Math.PI*2);c.fill();if(selected)c.stroke();}else{const start=(Number.isFinite(Number(event.startX))?Number(event.startX):0)*PX_PER_M-offset,end=(Number.isFinite(Number(event.endX))?Number(event.endX):700)*PX_PER_M-offset,pathY=Number.isFinite(Number(event.pathY))?Number(event.pathY):1.35,y=wallTop+pathY*(ground-wallTop);c.setLineDash([7,5]);c.beginPath();c.moveTo(start,y);c.lineTo(end,y);c.stroke();c.setLineDash([]);[start,end].forEach((x,index)=>{c.beginPath();c.arc(x,y,selected?7:4,0,Math.PI*2);c.fill();if(selected)c.stroke();c.fillStyle='#25211d';c.font='700 10px sans-serif';c.textAlign='center';c.fillText(index?'B':'A',x,y-11);c.fillStyle=selected?'#f0c849':'rgba(240,201,73,.72)';});}c.restore();});
+  if(!import.meta.env.DEV||!state.sceneEditing||state.followedEventId||state.editorLayer!=='events')return;state.events.filter(event=>event.type!=='scene').forEach(event=>{const selected=event.id===state.selectedEventId;c.save();c.fillStyle=selected?'#f0c849':'rgba(240,201,73,.72)';c.strokeStyle='#25211d';c.lineWidth=2;if(event.type==='text'){const x=(Number(event.x)||0)*PX_PER_M-offset,y=wallTop+(Number(event.y)||0)*(ground-wallTop);c.beginPath();c.arc(x,y,selected?7:4,0,Math.PI*2);c.fill();if(selected)c.stroke();}else{const start=(Number.isFinite(Number(event.startX))?Number(event.startX):0)*PX_PER_M-offset,end=(Number.isFinite(Number(event.endX))?Number(event.endX):700)*PX_PER_M-offset,pathY=Number.isFinite(Number(event.pathY))?Number(event.pathY):1.35,y=wallTop+pathY*(ground-wallTop);c.setLineDash([7,5]);c.beginPath();c.moveTo(start,y);c.lineTo(end,y);c.stroke();c.setLineDash([]);[start,end].forEach((x,index)=>{c.beginPath();c.arc(x,y,selected?7:4,0,Math.PI*2);c.fill();if(selected)c.stroke();c.fillStyle='#25211d';c.font='700 10px sans-serif';c.textAlign='center';c.fillText(index?'B':'A',x,y-11);c.fillStyle=selected?'#f0c849':'rgba(240,201,73,.72)';});}c.restore();});
 }
 
 function pumpSceneImageQueue() {
@@ -726,7 +755,7 @@ function resolvedLightPosition(light) {
 }
 
 function pickEventAt(clientX,clientY) {
-  const point=screenToWorldPoint(clientX,clientY);for(const event of [...state.events].reverse()){if(event.type==='text'){const x=(Number(event.x)||0)*PX_PER_M-state.camera,y=point.bands.wallTop+(Number(event.y)||0)*(point.bands.wallBottom-point.bands.wallTop),width=Math.max(120,Math.min(520,(Number(event.widthM)||5)*PX_PER_M));if(Math.hypot(point.screenX-x,point.screenY-y)<=20||(Math.abs(point.screenX-x)<=width*.5&&point.screenY>=y-190&&point.screenY<=y+20))return event.id;}else{const start=(Number.isFinite(Number(event.startX))?Number(event.startX):0)*PX_PER_M-state.camera,end=(Number.isFinite(Number(event.endX))?Number(event.endX):700)*PX_PER_M-state.camera,pathY=Number.isFinite(Number(event.pathY))?Number(event.pathY):1.35,y=point.bands.wallTop+pathY*(point.bands.wallBottom-point.bands.wallTop);if(Math.hypot(point.screenX-start,point.screenY-y)<=24||Math.hypot(point.screenX-end,point.screenY-y)<=24)return event.id;}}return null;
+  const point=screenToWorldPoint(clientX,clientY);for(const event of [...state.events].reverse()){if(event.type==='scene')continue;if(event.type==='text'){const x=(Number(event.x)||0)*PX_PER_M-state.camera,y=point.bands.wallTop+(Number(event.y)||0)*(point.bands.wallBottom-point.bands.wallTop),width=Math.max(120,Math.min(520,(Number(event.widthM)||5)*PX_PER_M));if(Math.hypot(point.screenX-x,point.screenY-y)<=20||(Math.abs(point.screenX-x)<=width*.5&&point.screenY>=y-190&&point.screenY<=y+20))return event.id;}else{const start=(Number.isFinite(Number(event.startX))?Number(event.startX):0)*PX_PER_M-state.camera,end=(Number.isFinite(Number(event.endX))?Number(event.endX):700)*PX_PER_M-state.camera,pathY=Number.isFinite(Number(event.pathY))?Number(event.pathY):1.35,y=point.bands.wallTop+pathY*(point.bands.wallBottom-point.bands.wallTop);if(Math.hypot(point.screenX-start,point.screenY-y)<=24||Math.hypot(point.screenX-end,point.screenY-y)<=24)return event.id;}}return null;
 }
 function moveEventFromScreen(clientX,clientY) { const point=screenToWorldPoint(clientX,clientY);return{x:Math.max(0,Math.min(700,point.x)),y:Math.max(-3,Math.min(5,point.y))}; }
 
@@ -779,10 +808,10 @@ function render(now) {
     state.x=Math.max(0,Math.min(700,state.x+state.velocity*dt));
     state.stride+=movementEnergy*dt*(running?7.4:4.6);
   }
-  const playerScreen=playerScreenX(),followedEvent=import.meta.env.DEV&&state.sceneEditing&&state.followedEventId?state.events.find(event=>event.id===state.followedEventId&&event.type==='walker'):null,followedState=followedEvent?walkerEventState(followedEvent,wallNow):null;if(followedState)state.followCameraX=followedState.x;else if(followedEvent&&state.followCameraX===null){const a=Number.isFinite(Number(followedEvent.startX))?Number(followedEvent.startX):0,b=Number.isFinite(Number(followedEvent.endX))?Number(followedEvent.endX):700;state.followCameraX=followedEvent.direction==='left'?Math.max(a,b):Math.min(a,b);}const followedX=followedEvent?state.followCameraX:null,viewCenter=innerWidth*.5,viewAnchor=followedX!==null?viewCenter:playerScreen,desired=followedX!==null?followedX*PX_PER_M-viewCenter:state.x*PX_PER_M-playerScreen,worldWidth=700*PX_PER_M,safeZoom=Math.max(1,state.zoom),cameraMin=viewAnchor/safeZoom-viewAnchor,cameraMax=Math.max(cameraMin,worldWidth-viewAnchor-(innerWidth-viewAnchor)/safeZoom),cameraTarget=Math.max(cameraMin,Math.min(cameraMax,desired));
+  const playerScreen=playerScreenX(),followedEvent=import.meta.env.DEV&&state.sceneEditing&&state.followedEventId?state.events.find(event=>event.id===state.followedEventId&&event.type==='walker'):null,followedState=followedEvent?walkerEventState(followedEvent,wallNow):null;if(followedState)state.followCameraX=followedState.x;else if(followedEvent&&state.followCameraX===null){const a=Number.isFinite(Number(followedEvent.startX))?Number(followedEvent.startX):0,b=Number.isFinite(Number(followedEvent.endX))?Number(followedEvent.endX):700;state.followCameraX=followedEvent.direction==='left'?Math.max(a,b):Math.min(a,b);}const followedX=followedEvent?state.followCameraX:null,freeCameraX=import.meta.env.DEV&&state.sceneEditing&&state.devFreeCamera?state.devCameraX:null,cameraSubjectX=followedX??freeCameraX,viewCenter=innerWidth*.5,viewAnchor=cameraSubjectX!==null?viewCenter:playerScreen,desired=cameraSubjectX!==null?cameraSubjectX*PX_PER_M-viewCenter:state.x*PX_PER_M-playerScreen,worldWidth=700*PX_PER_M,safeZoom=Math.max(1,state.zoom),cameraMin=viewAnchor/safeZoom-viewAnchor,cameraMax=Math.max(cameraMin,worldWidth-viewAnchor-(innerWidth-viewAnchor)/safeZoom),cameraTarget=Math.max(cameraMin,Math.min(cameraMax,desired));
   const cameraAtBoundary=desired<=cameraMin+.01||desired>=cameraMax-.01;
   if((followedX!==null&&state.followCameraSnap)||cameraAtBoundary){state.camera=cameraTarget;state.followCameraSnap=false;}else state.camera+=(cameraTarget-state.camera)*smooth(followedX!==null?(reduced?18:7.5):reduced?12:running&&import.meta.env.DEV?10:4.2);
-  const currentMeter=Math.min(700,Math.floor(followedX??state.x)+1);
+  const currentMeter=Math.min(700,Math.floor(cameraSubjectX??state.x)+1);
   if(currentMeter!==renderedMeter){renderedMeter=currentMeter;$('#meterValue').textContent=`${currentMeter} – 700`;}
   if(!state.accessGranted){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,innerWidth,innerHeight);requestAnimationFrame(render);return;}
   syncGraffitiIndex();
@@ -803,7 +832,8 @@ function render(now) {
   const playerX=state.x*PX_PER_M-off,playerBaseline=baselineFor(state.lane),playerScale=depthScale(state.lane);
   const foreground=[];
   sceneLayerItems('front').forEach(item=>{if(Number(item.y)<=1)return;const width=item.widthM*PX_PER_M,x=item.x*PX_PER_M-off;if(x+width/2<0||x-width/2>innerWidth)return;foreground.push({y:wallTop+item.y*(ground-wallTop),draw:()=>drawSceneItem(ctx,item,off,wallTop,ground,now)});});
-  state.events.filter(event=>event.type==='walker').forEach(event=>{const active=walkerEventState(event,wallNow);if(!active)return;const pathY=Number(event.pathY),lane=Math.max(0,Math.min(1,Number(event.lane)||.5)),baseline=Number.isFinite(pathY)?wallTop+pathY*(ground-wallTop):baselineFor(lane),speech=activeWalkerSpeech(event,wallNow);foreground.push({y:baseline,draw:()=>drawEventWalker(ctx,event,active.x,baseline,off,now,active.dir,speech)});});
+  state.events.filter(event=>event.type==='walker').forEach(event=>{const active=walkerEventState(event,wallNow);if(!active)return;const pathY=Number(event.pathY),lane=Math.max(0,Math.min(1,Number(event.lane)||.5)),baseline=Number.isFinite(pathY)?wallTop+pathY*(ground-wallTop):baselineFor(lane),speeches=activeWalkerSpeeches(event,wallNow);foreground.push({y:baseline,draw:()=>drawEventWalker(ctx,event,active.x,baseline,off,now,active.dir,speeches)});});
+  state.events.filter(event=>event.type==='scene').forEach(scene=>{const playback=scenePlaybackState(scene,wallNow);if(!playback)return;(Array.isArray(scene.actors)?scene.actors:[]).forEach(actor=>{if(!actor.src)return;const active=sceneActorState(actor,playback.time),pathY=Number(actor.pathY),baseline=Number.isFinite(pathY)?wallTop+pathY*(ground-wallTop):baselineFor(.5),activeCue=activeSceneCue(scene,actor.id,playback.time),cue=activeCue?.cue,renderActor={...actor,visibility:scene.visibility,speechWidthM:Number(cue?.widthM)||5,speechFontSize:Number(cue?.fontSize)||20,speechTextColor:cue?.textColor||'#25211d',speechBackgroundColor:cue?.backgroundColor||'#f2eadb'};foreground.push({y:baseline,draw:()=>drawEventWalker(ctx,renderActor,active.x,baseline,off,now,active.dir,activeCue?[activeCue.speech]:[])});});});
   if(followedX===null)foreground.push({y:playerBaseline,draw:()=>{drawPerson(ctx,playerX,playerBaseline,playerScale,state,state.velocity/3.2,state.stride,movementEnergy);drawNameLabel(ctx,playerX,playerBaseline,playerScale,state.name,state.nameColor);}});
   if(followedX===null)state.others.forEach(p=>{
     const predictionAge=Math.max(0,Math.min(1.25,(now-p.receivedAt)/1000));
@@ -985,15 +1015,21 @@ if (import.meta.env.DEV) {
     setEnvironmentMode: mode => { state.environmentMode = ['auto','day','night'].includes(mode) ? mode : 'auto'; },
     getPlayerX: () => state.x,
     getViewCenterX: () => Math.max(0,Math.min(700,(state.camera+innerWidth*.5)/PX_PER_M)),
+    getFreeCameraX: () => state.devCameraX,
+    setFreeCamera: (enabled,x) => { state.devFreeCamera=Boolean(enabled);if(state.devFreeCamera){state.followedEventId=null;state.followCameraX=null;state.followCameraSnap=false;state.devCameraX=Math.max(0,Math.min(700,Number.isFinite(Number(x))?Number(x):(state.camera+innerWidth*.5)/PX_PER_M));} },
+    setFreeCameraX: x => { state.devCameraX=Math.max(0,Math.min(700,Number(x)||0));return state.devCameraX; },
+    panFreeCamera: deltaPx => { state.devCameraX=Math.max(0,Math.min(700,state.devCameraX+Number(deltaPx||0)/(PX_PER_M*Math.max(1,state.zoom))));return state.devCameraX; },
     getDefaultEventY: () => { const bands=sceneBands();return Number(((bands.walkwayTop+bands.walkwayHeight*.5-bands.wallTop)/(bands.wallBottom-bands.wallTop)).toFixed(3)); },
     setSelected: id => { state.selectedSceneId = id; },
     setSelectedLight: id => { state.selectedLightId = id; },
     setSelectedEvent: id => { state.selectedEventId = id; },
     getFollowedEventId: () => state.followedEventId,
-    setFollowedEvent: id => { state.followedEventId=state.events.some(event=>event.id===id&&event.type==='walker')?id:null;state.followCameraX=null;state.followCameraSnap=Boolean(state.followedEventId); },
+    setFollowedEvent: id => { state.followedEventId=state.events.some(event=>event.id===id&&event.type==='walker')?id:null;if(state.followedEventId)state.devFreeCamera=false;state.followCameraX=null;state.followCameraSnap=Boolean(state.followedEventId); },
     previewEvent: id => { if(id)EVENT_PREVIEW_STARTS.set(id,Date.now()); },
+    previewEventAt: (id,seconds=0) => { if(id)EVENT_PREVIEW_STARTS.set(id,Date.now()-Math.max(0,Number(seconds)||0)*1000); },
+    stopEventPreview: id => { if(id)EVENT_PREVIEW_STARTS.set(id,Number.POSITIVE_INFINITY); },
     setEditorLayer: layer => { state.editorLayer = ['lights','events'].includes(layer) ? layer : 'assets'; },
-    setEditing: value => { state.sceneEditing = value; if(!value){state.followedEventId=null;state.followCameraX=null;state.followCameraSnap=false;} if (value && state.edit) closeEditor(); },
+    setEditing: value => { state.sceneEditing = value; if(!value){state.followedEventId=null;state.followCameraX=null;state.followCameraSnap=false;state.devFreeCamera=false;} if (value && state.edit) closeEditor(); },
     getGraffitiCount: () => state.graffiti.length,
     clearGraffiti: () => {
       const removed = state.graffiti.length;

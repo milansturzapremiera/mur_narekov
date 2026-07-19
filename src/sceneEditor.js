@@ -1,4 +1,5 @@
 import './sceneEditor.css';
+import { mountSceneDirector } from './sceneDirector.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value)));
 const LANDING_FIELDS = [
@@ -49,7 +50,7 @@ async function request(path, body) {
 }
 
 export function mountSceneEditor(api) {
-  let items = api.getItems(), lights = api.getLights(), events = api.getEvents(), terrain = api.getTerrain(), landing = api.getLanding(), environmentMode = api.getEnvironmentMode(), selectedId = null, selectedLightId = null, selectedEventId = null, followedEventId = api.getFollowedEventId(), editorLayer = 'assets', open = false, dirty = false, dragging = false, placingEvent = false, landingElement = 'eyebrow';
+  let items = api.getItems(), lights = api.getLights(), events = api.getEvents(), terrain = api.getTerrain(), landing = api.getLanding(), environmentMode = api.getEnvironmentMode(), selectedId = null, selectedLightId = null, selectedEventId = null, followedEventId = api.getFollowedEventId(), freeCamera = false, cameraX = api.getViewCenterX(), editorLayer = 'assets', open = false, dirty = false, dragging = false, placingEvent = false, landingElement = 'eyebrow';
 
   const trigger = document.createElement('button');
   trigger.className = 'dev-scene-trigger';
@@ -76,6 +77,15 @@ export function mountSceneEditor(api) {
         <label><input type="radio" name="environmentMode" value="night"><span>Noc</span></label>
       </form>
       <p>Ostrá verzia používa miestny čas návštevníka. Súmrak začína o 18:00, plná noc o 20:00.</p>
+    </section>
+    <section class="dev-camera-tools" aria-labelledby="devCameraTitle">
+      <header><div><strong id="devCameraTitle">Kamera</strong><small>Voľný pohyb po 700 m</small></div><button type="button" data-action="toggle-free-camera" aria-pressed="false">Odpojiť od hráča</button></header>
+      <div class="dev-camera-minimap">
+        <div class="dev-camera-map" aria-hidden="true"><span class="dev-camera-map-markers"></span></div>
+        <input type="range" min="0" max="700" step="0.1" value="0" aria-label="Poloha kamery na minimape">
+        <div class="dev-camera-scale"><span>0 m</span><output>1 / 700 m</output><span>700 m</span></div>
+      </div>
+      <div class="dev-camera-actions"><button type="button" data-camera-step="-25" aria-label="Posunúť kameru o 25 metrov doľava">← 25 m</button><p>A/D alebo šípky · medzerník + potiahnuť obraz</p><button type="button" data-camera-step="25" aria-label="Posunúť kameru o 25 metrov doprava">25 m →</button></div>
     </section>
     <nav class="dev-layer-tabs" aria-label="Vrstva editora">
       <button type="button" data-editor-layer="assets" aria-pressed="true"><span>Assety</span><small>Obrázky v scéne</small></button>
@@ -143,6 +153,7 @@ export function mountSceneEditor(api) {
       <div class="dev-light-list" aria-label="Zdroje svetla"></div>
     </section>
     <section class="dev-event-browser" hidden>
+      <div class="dev-scene-director-mount"></div>
       <label class="dev-event-upload"><input type="file" accept="image/png,image/jpeg,image/webp"><span><b>＋ Pohybujúci sa asset</b><small>Prejde po chodníku cez celých 700 m</small></span></label>
       <button type="button" class="dev-add-text-event" data-action="add-text-event"><b>＋ Textová bublina</b><small>Časovaná sekvencia správ</small></button>
       <p class="dev-scene-help">Eventy sa riadia reálnym časom. Začiatok môže byť po otvorení hry alebo v konkrétny dátum a čas.</p>
@@ -212,9 +223,14 @@ export function mountSceneEditor(api) {
         <div class="dev-event-animation"><div class="dev-scene-pair"><label>Počet políčok<input name="frames" type="number" min="2" max="60"></label><label>Rýchlosť FPS<input name="fps" type="number" min="0.5" max="30" step="0.5"></label></div><label>Smer políčok<select name="frameDirection"><option value="horizontal">Vodorovne →</option><option value="vertical">Zvislo ↓</option></select></label></div>
         <label class="dev-animation-toggle"><input name="speechEnabled" type="checkbox"><span>Asset počas chôdze občas niečo povie</span></label>
         <fieldset class="dev-walker-speech-settings" hidden><legend>Hovoriace bubliny</legend>
-          <label>Hlášky · každý riadok je ďalšia bublina<textarea name="speechMessages" rows="5" maxlength="3200"></textarea></label>
-          <div class="dev-scene-pair"><label>Prvá hláška po<input name="speechDelaySec" type="number" min="0" max="3600" step="0.5"><span>sekúnd</span></label><label>Hláška každých<input name="speechEverySec" type="number" min="1" max="3600" step="0.5"><span>sekúnd</span></label></div>
-          <label>Dĺžka zobrazenia<input name="speechDurationSec" type="number" min="0.5" max="30" step="0.1"><span>sekúnd</span></label>
+          <p class="dev-event-placement-help">Každá sekvencia môže obsahovať vlastné bubliny. Text sa bude počas pohybu držať nad assetom.</p>
+          <label>Prvá sekvencia po<input name="speechDelaySec" type="number" min="0" max="3600" step="0.5"><span>sekúnd</span></label>
+          <div class="dev-scene-pair"><label>Počet bubliniek v sekvencii<input name="speechBubblesPerSequence" type="number" min="1" max="20"></label><label>Počet rôznych sekvencií<input name="speechSequenceCount" type="number" min="1" max="50"></label></div>
+          <label class="dev-animation-toggle"><input name="speechRepeatEvent" type="checkbox"><span>Po poslednej sekvencii začať hovorenie znova</span></label>
+          <div class="dev-speech-sequence-text-editors"></div>
+          <label>Rozostup bubliniek<input name="speechBubbleIntervalSec" type="number" min="0.2" max="3600" step="0.1"><span>sekúnd</span></label>
+          <label>Dĺžka zobrazenia bubliny<input name="speechBubbleDurationSec" type="number" min="0.5" max="120" step="0.1"><span>sekúnd</span></label>
+          <label>Opakovanie sekvencie<input name="speechRepeatEverySec" type="number" min="0.5" max="86400" step="0.5"><span>sekúnd</span></label>
           <label>Šírka bubliny <output data-event-output="speechWidth"></output><input name="speechWidthM" type="range" min="2" max="14" step="0.1"></label>
           <label>Veľkosť textu <output data-event-output="speechFontSize"></output><input name="speechFontSize" type="range" min="12" max="42" step="1"></label>
           <div class="dev-scene-pair"><label>Text<input name="speechTextColor" type="color"></label><label>Pozadie<input name="speechBackgroundColor" type="color"></label></div>
@@ -254,6 +270,12 @@ export function mountSceneEditor(api) {
   const list = panel.querySelector('.dev-scene-list');
   const lightList = panel.querySelector('.dev-light-list');
   const eventList = panel.querySelector('.dev-event-list');
+  const sceneDirectorHost = panel.querySelector('.dev-scene-director-mount');
+  const cameraTools = panel.querySelector('.dev-camera-tools');
+  const cameraToggle = panel.querySelector('[data-action="toggle-free-camera"]');
+  const cameraRange = panel.querySelector('.dev-camera-minimap input');
+  const cameraOutput = panel.querySelector('.dev-camera-scale output');
+  const cameraMarkers = panel.querySelector('.dev-camera-map-markers');
   const panelBody = panel.querySelector('.dev-scene-body');
   const form = panel.querySelector('.dev-scene-properties');
   const lightForm = panel.querySelector('.dev-light-properties');
@@ -291,6 +313,30 @@ export function mountSceneEditor(api) {
   function updateGraffitiCount() {
     const count = api.getGraffitiCount();
     graffitiCount.textContent = `${count} ${count === 1 ? 'odkaz' : count > 1 && count < 5 ? 'odkazy' : 'odkazov'}`;
+  }
+
+  function renderCameraMarkers() {
+    const positions=[...items.map(item=>item.x),...events.flatMap(event=>event.type==='text'?[event.x]:event.type==='walker'?[event.startX,event.endX]:[])].map(Number).filter(Number.isFinite);
+    cameraMarkers.innerHTML=positions.slice(0,240).map(x=>`<i style="--map-x:${clamp(x,0,700)/7}%"></i>`).join('');
+  }
+
+  function updateCameraUi() {
+    cameraX=clamp(cameraX,0,700);cameraRange.value=String(cameraX);cameraOutput.textContent=`${Math.floor(cameraX)+1} / 700 m`;cameraToggle.setAttribute('aria-pressed',String(freeCamera));cameraToggle.textContent=freeCamera?'Pripojiť k hráčovi':'Odpojiť od hráča';cameraTools.classList.toggle('is-free',freeCamera);
+  }
+
+  function moveFreeCamera(value,{enable=true}={}) {
+    if(enable&&!freeCamera)setFreeCameraMode(true);
+    cameraX=api.setFreeCameraX(clamp(value,0,700));updateCameraUi();
+  }
+
+  function setFreeCameraMode(value) {
+    const next=Boolean(value&&open);
+    if(next&&followedEventId)setCameraFollowMode(false);
+    freeCamera=next;
+    if(next)cameraX=api.getViewCenterX();
+    api.setFreeCamera(next,cameraX);
+    document.documentElement.classList.toggle('dev-free-camera',next);
+    updateCameraUi();
   }
 
   function fillTerrainForm() {
@@ -348,7 +394,39 @@ export function mountSceneEditor(api) {
     api.setItems(items);
     api.setLights(lights);
     api.setEvents(events);
+    renderCameraMarkers();
   }
+
+  mountSceneDirector({
+    host:sceneDirectorHost,
+    canvas:api.canvas,
+    getEvents:()=>events,
+    getAvailableAssets:()=>{
+      const candidates=[
+        ...items.map(item=>({src:item.src,name:item.name,source:'Scéna'})),
+        ...events.filter(event=>event.type==='walker').map(event=>({src:event.src,name:event.name,source:'Pohybujúci sa event'})),
+        ...events.filter(event=>event.type==='scene').flatMap(scene=>(scene.actors||[]).map(actor=>({src:actor.src,name:actor.name,source:`Scénka: ${scene.name}`})))
+      ];
+      const seen=new Set();
+      return candidates.filter(asset=>{
+        if(typeof asset.src!=='string'||!asset.src||seen.has(asset.src))return false;
+        seen.add(asset.src);
+        return true;
+      });
+    },
+    markDirty,
+    getViewCenterX:api.getViewCenterX,
+    getDefaultEventY:api.getDefaultEventY,
+    moveEventFromScreen:api.moveEventFromScreen,
+    previewEventAt:api.previewEventAt,
+    stopEventPreview:api.stopEventPreview,
+    notify:api.notify,
+    uploadAsset:async(file,name)=>{
+      if(!['image/png','image/jpeg','image/webp'].includes(file.type))throw new Error('Použi PNG, JPG alebo WebP.');
+      if(file.size>8*1024*1024)throw new Error('Obrázok môže mať najviac 8 MB.');
+      const dataUrl=await fileAsDataUrl(file),uploaded=await request('/__scene-editor/upload',{name,dataUrl});return uploaded.src;
+    }
+  });
 
   function updateOutputs(item) {
     form.querySelector('[data-output="widthM"]').textContent = `${Number(item.widthM).toFixed(1)} m`;
@@ -416,11 +494,24 @@ export function mountSceneEditor(api) {
     event.sequences.forEach((texts,sequenceIndex)=>{const group=document.createElement('fieldset');group.className='dev-sequence-text-group';const legend=document.createElement('legend');legend.textContent=`Sekvencia ${sequenceIndex+1}`;const hint=document.createElement('small');hint.textContent='Každý riadok je samostatná bublina v tejto sekvencii.';const textarea=document.createElement('textarea');textarea.name='sequenceTexts';textarea.dataset.sequenceIndex=String(sequenceIndex);textarea.rows=Math.max(2,Math.min(7,texts.length));textarea.maxLength=3200;textarea.value=texts.join('\n');group.append(legend,hint,textarea);container.append(group);});
   }
 
+  function ensureSpeechSequences(event) {
+    const legacy=(Array.isArray(event.speechMessages)?event.speechMessages:[]).map(value=>String(value)),source=Array.isArray(event.speechSequences)?event.speechSequences:[];
+    const bubbleCount=Math.max(1,Math.min(20,Math.round(Number(event.speechBubblesPerSequence)||1))),sequenceTotal=Math.max(1,Math.min(50,Math.round(Number(event.speechSequenceCount)||source.length||legacy.length||1)));
+    event.speechBubblesPerSequence=bubbleCount;event.speechSequenceCount=sequenceTotal;event.speechRepeatEvent=event.speechRepeatEvent!==false;event.speechBubbleIntervalSec=Number(event.speechBubbleIntervalSec)||3;event.speechBubbleDurationSec=Number(event.speechBubbleDurationSec??event.speechDurationSec)||3;event.speechRepeatEverySec=Number(event.speechRepeatEverySec??event.speechEverySec)||12;
+    event.speechSequences=Array.from({length:sequenceTotal},(_,sequenceIndex)=>Array.from({length:bubbleCount},(_,bubbleIndex)=>{const existing=source[sequenceIndex]?.[bubbleIndex];if(existing!==undefined)return String(existing);return legacy[(sequenceIndex*bubbleCount+bubbleIndex)%Math.max(1,legacy.length)]??(bubbleIndex?'':`Sekvencia ${sequenceIndex+1}`);}));
+    event.speechMessages=event.speechSequences.flat();
+  }
+
+  function renderSpeechSequenceEditors(event) {
+    const container=eventForm.querySelector('.dev-speech-sequence-text-editors');container.replaceChildren();if(event.type!=='walker')return;ensureSpeechSequences(event);
+    event.speechSequences.forEach((texts,sequenceIndex)=>{const group=document.createElement('fieldset');group.className='dev-sequence-text-group';const legend=document.createElement('legend');legend.textContent=`Sekvencia ${sequenceIndex+1}`;const hint=document.createElement('small');hint.textContent='Každý riadok je samostatná bublina tejto sekvencie.';const textarea=document.createElement('textarea');textarea.name='speechSequenceTexts';textarea.dataset.sequenceIndex=String(sequenceIndex);textarea.rows=Math.max(2,Math.min(7,texts.length));textarea.maxLength=3200;textarea.value=texts.join('\n');group.append(legend,hint,textarea);container.append(group);});
+  }
+
   function fillEventForm() {
     const event=selectedEvent();eventForm.hidden=!event;if(!event)return;eventDetailName.textContent=event.name;
     ['name','visibility','startAt','startDelaySec'].forEach(key=>{eventForm.elements[key].value=event[key]??'';});
     const walker=event.type==='walker',followButton=eventForm.querySelector('[data-action="follow-event"]');eventForm.querySelector('.dev-walker-settings').hidden=!walker;eventForm.querySelector('.dev-text-event-settings').hidden=walker;eventForm.querySelector('[data-action="place-event-freely"]').textContent=walker?'⌖ Umiestniť začiatok trasy v scéne':'⌖ Umiestniť voľne v scéne';followButton.hidden=!walker;followButton.setAttribute('aria-pressed',String(event.id===followedEventId));followButton.textContent=event.id===followedEventId?'■ Zastaviť sledovanie':'◉ Sledovať kamerou';
-    if(walker){['widthM','startX','endX','pathY','speedMps','direction','loopDelaySec','runCount','frames','fps','frameDirection','speechDelaySec','speechEverySec','speechDurationSec','speechFontSize','speechTextColor','speechBackgroundColor'].forEach(key=>{eventForm.elements[key].value=event[key]??(key==='endX'?700:key==='pathY'?api.getDefaultEventY():key==='speechEverySec'?12:key==='speechDurationSec'?3:key==='speechFontSize'?20:key==='speechTextColor'?'#25211d':key==='speechBackgroundColor'?'#f2eadb':0);});eventForm.elements.speechMessages.value=(event.speechMessages||[]).join('\n');eventForm.elements.speechWidthM.value=event.speechWidthM||5;eventForm.elements.animated.checked=event.animated===true;eventForm.elements.speechEnabled.checked=event.speechEnabled===true;eventForm.querySelector('.dev-event-animation').hidden=!event.animated;eventForm.querySelector('.dev-walker-speech-settings').hidden=!event.speechEnabled;}
+    if(walker){ensureSpeechSequences(event);['widthM','startX','endX','pathY','speedMps','direction','loopDelaySec','runCount','frames','fps','frameDirection','speechDelaySec','speechBubblesPerSequence','speechSequenceCount','speechBubbleIntervalSec','speechBubbleDurationSec','speechRepeatEverySec','speechFontSize','speechTextColor','speechBackgroundColor'].forEach(key=>{eventForm.elements[key].value=event[key]??(key==='endX'?700:key==='pathY'?api.getDefaultEventY():key==='speechRepeatEverySec'?12:key==='speechBubbleDurationSec'?3:key==='speechBubbleIntervalSec'?3:key==='speechFontSize'?20:key==='speechTextColor'?'#25211d':key==='speechBackgroundColor'?'#f2eadb':0);});eventForm.elements.speechRepeatEvent.checked=event.speechRepeatEvent!==false;eventForm.elements.speechWidthM.value=event.speechWidthM||5;eventForm.elements.animated.checked=event.animated===true;eventForm.elements.speechEnabled.checked=event.speechEnabled===true;eventForm.querySelector('.dev-event-animation').hidden=!event.animated;eventForm.querySelector('.dev-walker-speech-settings').hidden=!event.speechEnabled;renderSpeechSequenceEditors(event);}
     else{['x','y','bubblesPerSequence','sequenceCount','bubbleIntervalSec','bubbleDurationSec','repeatEverySec','fontSize','textColor','backgroundColor'].forEach(key=>{eventForm.elements[key].value=event[key]??'';});eventForm.elements.repeatEvent.checked=event.repeatEvent!==false;eventForm.elements.textWidthM.value=event.widthM||5;renderSequenceEditors(event);}
     updateEventOutputs(event);
   }
@@ -472,8 +563,8 @@ export function mountSceneEditor(api) {
     syncDetailState();
   }
   function renderEventList() {
-    eventList.replaceChildren();const query=eventSearch.value.trim().toLocaleLowerCase('sk'),visible=query?events.filter(event=>event.name.toLocaleLowerCase('sk').includes(query)):events;eventCount.textContent=`${events.length} eventov`;
-    if(!visible.length){const empty=document.createElement('p');empty.className='dev-scene-empty';empty.textContent=events.length?'Žiadny event nezodpovedá hľadaniu.':'Pridaj pohybujúci sa asset alebo textovú sekvenciu.';eventList.append(empty);}
+    const legacyEvents=events.filter(event=>event.type!=='scene');eventList.replaceChildren();const query=eventSearch.value.trim().toLocaleLowerCase('sk'),visible=query?legacyEvents.filter(event=>event.name.toLocaleLowerCase('sk').includes(query)):legacyEvents,sceneCount=events.length-legacyEvents.length;eventCount.textContent=`${legacyEvents.length} eventov${sceneCount?` · ${sceneCount} scénok`:''}`;
+    if(!visible.length){const empty=document.createElement('p');empty.className='dev-scene-empty';empty.textContent=legacyEvents.length?'Žiadny event nezodpovedá hľadaniu.':'Samostatné eventy môžeš pridať nižšie. Scénky spravuje režisér.';eventList.append(empty);}
     else visible.forEach(event=>{const button=document.createElement('button');button.type='button';button.className='dev-event-item';button.dataset.eventId=event.id;button.setAttribute('aria-pressed',String(event.id===selectedEventId));const icon=document.createElement('span');icon.className=`dev-event-icon is-${event.type}`;icon.textContent=event.type==='text'?'Aa':'→';const copy=document.createElement('span'),name=document.createElement('b'),meta=document.createElement('small');name.textContent=event.name;const visibility=event.visibility==='day'?'DEŇ':event.visibility==='night'?'NOC':'VŽDY';meta.textContent=`${event.type==='text'?'TEXT':'POHYB'} · ${visibility}`;copy.append(name,meta);button.append(icon,copy);eventList.append(button);});syncDetailState();
   }
 
@@ -501,7 +592,7 @@ export function mountSceneEditor(api) {
 
   function toggle(force) {
     open = typeof force === 'boolean' ? force : !open;
-    if(!open){setEventPlacementMode(false);setCameraFollowMode(false);}
+    if(!open){setEventPlacementMode(false);setCameraFollowMode(false);setFreeCameraMode(false);}
     panel.classList.toggle('open', open);
     panel.setAttribute('aria-hidden', String(!open));
     trigger.setAttribute('aria-expanded', String(open));
@@ -510,6 +601,7 @@ export function mountSceneEditor(api) {
     document.documentElement.classList.toggle('dev-scene-editing', open);
     api.setEditing(open);
     if (open) {
+      cameraX=api.getViewCenterX();updateCameraUi();renderCameraMarkers();
       updateGraffitiCount();
       (selectedId?form.elements.name:selectedLightId?lightForm.elements.name:selectedEventId?eventForm.elements.name:editorLayer==='lights'?panel.querySelector('[data-action="add-light"]'):editorLayer==='events'?panel.querySelector('[data-action="add-text-event"]'):fileInput).focus();
     }
@@ -524,7 +616,7 @@ export function mountSceneEditor(api) {
   }
 
   function setCameraFollowMode(value){
-    const event=selectedEvent(),next=Boolean(value&&open&&event?.type==='walker');followedEventId=next?event.id:null;api.setFollowedEvent(followedEventId);panel.classList.toggle('camera-following',next);document.documentElement.classList.toggle('dev-camera-following',next);
+    const event=selectedEvent(),next=Boolean(value&&open&&event?.type==='walker');if(next&&freeCamera)setFreeCameraMode(false);followedEventId=next?event.id:null;api.setFollowedEvent(followedEventId);panel.classList.toggle('camera-following',next);document.documentElement.classList.toggle('dev-camera-following',next);
     if(next){api.previewEvent(event.id);trigger.innerHTML='<span>REC</span> ■ Stop kamera';trigger.setAttribute('aria-label','Zastaviť sledovanie eventu kamerou');}
     else if(!placingEvent){trigger.innerHTML=open?'<span>DEV</span> Zavrieť':'<span>DEV</span> Editor';trigger.setAttribute('aria-label',open?'Zavrieť DEV editor':'Otvoriť DEV editor');}
     if(event&&!eventForm.hidden)fillEventForm();
@@ -532,6 +624,9 @@ export function mountSceneEditor(api) {
 
   trigger.addEventListener('click', () => followedEventId?setCameraFollowMode(false):placingEvent?setEventPlacementMode(false):toggle());
   panel.querySelector('[data-action="close"]').addEventListener('click', () => toggle(false));
+  cameraToggle.addEventListener('click',()=>setFreeCameraMode(!freeCamera));
+  cameraRange.addEventListener('input',event=>moveFreeCamera(event.target.value));
+  panel.querySelectorAll('[data-camera-step]').forEach(button=>button.addEventListener('click',()=>moveFreeCamera(cameraX+Number(button.dataset.cameraStep))));
   panel.querySelectorAll('[data-editor-layer]').forEach(button=>button.addEventListener('click',()=>setEditorLayer(button.dataset.editorLayer)));
   panel.querySelector('[data-action="back-to-list"]').addEventListener('click', () => {
     choose(null);
@@ -619,7 +714,7 @@ export function mountSceneEditor(api) {
   });
   panel.querySelector('[data-action="add-text-event"]').addEventListener('click',()=>{const event={id:crypto.randomUUID(),name:'Textová bublina',type:'text',visibility:'always',startAt:'',startDelaySec:0,x:Number(api.getViewCenterX().toFixed(2)),y:.5,messages:['Napíš sem prvú správu.'],sequences:[['Napíš sem prvú správu.']],bubblesPerSequence:1,sequenceCount:1,repeatEvent:true,bubbleIntervalSec:3,bubbleDurationSec:2.5,repeatEverySec:15,widthM:5,fontSize:20,textColor:'#25211d',backgroundColor:'#f2eadb'};events.push(event);markDirty();chooseEvent(event.id);api.previewEvent(event.id);api.notify('Textový event pridaný. Umiestni ho voľne kdekoľvek v scéne.');});
 
-  eventFileInput.addEventListener('change',async()=>{const file=eventFileInput.files?.[0];if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type))return setStatus('Použi PNG, JPG alebo WebP.','error');if(file.size>8*1024*1024)return setStatus('Obrázok môže mať najviac 8 MB.','error');setStatus('Nahrávam event asset…','loading');eventFileInput.disabled=true;try{const dataUrl=await fileAsDataUrl(file),uploaded=await request('/__scene-editor/upload',{name:`event-${file.name.replace(/\.[^.]+$/,'')}`,dataUrl}),startX=api.getViewCenterX();const event={id:crypto.randomUUID(),name:file.name.replace(/\.[^.]+$/,'').slice(0,60)||'Pohybujúci sa asset',type:'walker',src:uploaded.src,visibility:'always',startAt:'',startDelaySec:0,widthM:3,startX:Number(startX.toFixed(2)),endX:Number(Math.min(700,startX+80).toFixed(2)),pathY:api.getDefaultEventY(),speedMps:4,direction:'right',loopDelaySec:10,runCount:0,animated:false,frames:5,fps:6,frameDirection:'horizontal',speechEnabled:false,speechMessages:['Ahoj!'],speechDelaySec:2,speechEverySec:12,speechDurationSec:3,speechWidthM:5,speechFontSize:20,speechTextColor:'#25211d',speechBackgroundColor:'#f2eadb'};events.push(event);markDirty();chooseEvent(event.id);api.previewEvent(event.id);api.notify('Pohybujúci sa event pridaný. Umiestni začiatok jeho trasy v scéne.');}catch(error){setStatus(error.message,'error');}finally{eventFileInput.disabled=false;eventFileInput.value='';}});
+  eventFileInput.addEventListener('change',async()=>{const file=eventFileInput.files?.[0];if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type))return setStatus('Použi PNG, JPG alebo WebP.','error');if(file.size>8*1024*1024)return setStatus('Obrázok môže mať najviac 8 MB.','error');setStatus('Nahrávam event asset…','loading');eventFileInput.disabled=true;try{const dataUrl=await fileAsDataUrl(file),uploaded=await request('/__scene-editor/upload',{name:`event-${file.name.replace(/\.[^.]+$/,'')}`,dataUrl}),startX=api.getViewCenterX();const event={id:crypto.randomUUID(),name:file.name.replace(/\.[^.]+$/,'').slice(0,60)||'Pohybujúci sa asset',type:'walker',src:uploaded.src,visibility:'always',startAt:'',startDelaySec:0,widthM:3,startX:Number(startX.toFixed(2)),endX:Number(Math.min(700,startX+80).toFixed(2)),pathY:api.getDefaultEventY(),speedMps:4,direction:'right',loopDelaySec:10,runCount:0,animated:false,frames:5,fps:6,frameDirection:'horizontal',speechEnabled:false,speechMessages:['Ahoj!'],speechSequences:[['Ahoj!']],speechBubblesPerSequence:1,speechSequenceCount:1,speechRepeatEvent:true,speechDelaySec:2,speechBubbleIntervalSec:3,speechBubbleDurationSec:3,speechRepeatEverySec:12,speechWidthM:5,speechFontSize:20,speechTextColor:'#25211d',speechBackgroundColor:'#f2eadb'};events.push(event);markDirty();chooseEvent(event.id);api.previewEvent(event.id);api.notify('Pohybujúci sa event pridaný. Umiestni začiatok jeho trasy v scéne.');}catch(error){setStatus(error.message,'error');}finally{eventFileInput.disabled=false;eventFileInput.value='';}});
 
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files?.[0];
@@ -691,15 +786,16 @@ export function mountSceneEditor(api) {
     const event=selectedEvent(),field=inputEvent.target.name;if(!event||!field)return;
     if(['name','visibility','startAt','direction','frameDirection','textColor','backgroundColor'].includes(field))event[field]=inputEvent.target.value;
     else if(field==='sequenceTexts'){ensureEventSequences(event);const index=Number(inputEvent.target.dataset.sequenceIndex);event.sequences[index]=inputEvent.target.value.split(/\r?\n/).slice(0,Math.max(1,Number(event.bubblesPerSequence)||1)).map(value=>value.trim().slice(0,160));while(event.sequences[index].length<event.bubblesPerSequence)event.sequences[index].push('');event.messages=event.sequences.flat();}
-    else if(field==='speechMessages')event.speechMessages=inputEvent.target.value.split(/\r?\n/).map(value=>value.trim()).filter(Boolean).slice(0,20);
+    else if(field==='speechSequenceTexts'){ensureSpeechSequences(event);const index=Number(inputEvent.target.dataset.sequenceIndex);event.speechSequences[index]=inputEvent.target.value.split(/\r?\n/).slice(0,Math.max(1,Number(event.speechBubblesPerSequence)||1)).map(value=>value.trim().slice(0,160));while(event.speechSequences[index].length<event.speechBubblesPerSequence)event.speechSequences[index].push('');event.speechMessages=event.speechSequences.flat();}
     else if(['speechTextColor','speechBackgroundColor'].includes(field))event[field]=inputEvent.target.value;
     else if(field==='animated'){event.animated=inputEvent.target.checked;eventForm.querySelector('.dev-event-animation').hidden=!event.animated;}
     else if(field==='speechEnabled'){event.speechEnabled=inputEvent.target.checked;eventForm.querySelector('.dev-walker-speech-settings').hidden=!event.speechEnabled;}
+    else if(field==='speechRepeatEvent')event.speechRepeatEvent=inputEvent.target.checked;
     else if(field==='repeatEvent')event.repeatEvent=inputEvent.target.checked;
     else if(field==='textWidthM')event.widthM=clamp(inputEvent.target.value,2,14);
     else if(field==='speechWidthM')event.speechWidthM=clamp(inputEvent.target.value,2,14);
-    else{const ranges={startDelaySec:[0,86400],widthM:[.2,30],startX:[0,700],endX:[0,700],pathY:[-3,5],speedMps:[.2,30],loopDelaySec:[0,3600],runCount:[0,1000],frames:[2,60],fps:[.5,30],speechDelaySec:[0,3600],speechEverySec:[1,3600],speechDurationSec:[.5,30],speechFontSize:[12,42],x:[0,700],y:[-3,5],bubblesPerSequence:[1,20],sequenceCount:[1,50],bubbleIntervalSec:[.2,3600],bubbleDurationSec:[.5,120],repeatEverySec:[.5,86400],fontSize:[12,42]};if(!ranges[field])return;event[field]=clamp(inputEvent.target.value,...ranges[field]);if(['runCount','frames','speechFontSize','bubblesPerSequence','sequenceCount','fontSize'].includes(field))event[field]=Math.round(event[field]);}
-    if(['bubblesPerSequence','sequenceCount'].includes(field))renderSequenceEditors(event);updateEventOutputs(event);markDirty();if(['name','visibility','animated'].includes(field))renderEventList();
+    else{const ranges={startDelaySec:[0,86400],widthM:[.2,30],startX:[0,700],endX:[0,700],pathY:[-3,5],speedMps:[.2,30],loopDelaySec:[0,3600],runCount:[0,1000],frames:[2,60],fps:[.5,30],speechDelaySec:[0,3600],speechBubblesPerSequence:[1,20],speechSequenceCount:[1,50],speechBubbleIntervalSec:[.2,3600],speechBubbleDurationSec:[.5,120],speechRepeatEverySec:[.5,86400],speechFontSize:[12,42],x:[0,700],y:[-3,5],bubblesPerSequence:[1,20],sequenceCount:[1,50],bubbleIntervalSec:[.2,3600],bubbleDurationSec:[.5,120],repeatEverySec:[.5,86400],fontSize:[12,42]};if(!ranges[field])return;event[field]=clamp(inputEvent.target.value,...ranges[field]);if(['runCount','frames','speechFontSize','speechBubblesPerSequence','speechSequenceCount','bubblesPerSequence','sequenceCount','fontSize'].includes(field))event[field]=Math.round(event[field]);}
+    if(['bubblesPerSequence','sequenceCount'].includes(field))renderSequenceEditors(event);if(['speechBubblesPerSequence','speechSequenceCount'].includes(field))renderSpeechSequenceEditors(event);updateEventOutputs(event);markDirty();if(['name','visibility','animated'].includes(field))renderEventList();
   });
 
   panel.querySelector('[data-action="duplicate"]').addEventListener('click', () => {
@@ -722,7 +818,7 @@ export function mountSceneEditor(api) {
   panel.querySelector('[data-action="place-event-freely"]').addEventListener('click',()=>{
     const event=selectedEvent();if(!event)return;setEventPlacementMode(true);api.notify(event.type==='text'?'Klikni kamkoľvek v scéne. Textový event sa umiestni presne na toto miesto.':'Klikni kamkoľvek v scéne. Sem sa umiestni začiatok trasy assetu.');
   });
-  panel.querySelector('[data-action="duplicate-event"]').addEventListener('click',()=>{const event=selectedEvent();if(!event)return;const copy={...event,id:crypto.randomUUID(),name:`${event.name} kópia`.slice(0,60),messages:event.messages?[...event.messages]:undefined,sequences:event.sequences?event.sequences.map(sequence=>[...sequence]):undefined,speechMessages:event.speechMessages?[...event.speechMessages]:undefined};if(copy.type==='text')copy.x=Math.min(700,Number(copy.x||0)+1);else copy.startDelaySec=Number(copy.startDelaySec||0)+2;events.push(copy);markDirty();chooseEvent(copy.id);api.previewEvent(copy.id);});
+  panel.querySelector('[data-action="duplicate-event"]').addEventListener('click',()=>{const event=selectedEvent();if(!event)return;const copy={...event,id:crypto.randomUUID(),name:`${event.name} kópia`.slice(0,60),messages:event.messages?[...event.messages]:undefined,sequences:event.sequences?event.sequences.map(sequence=>[...sequence]):undefined,speechMessages:event.speechMessages?[...event.speechMessages]:undefined,speechSequences:event.speechSequences?event.speechSequences.map(sequence=>[...sequence]):undefined};if(copy.type==='text')copy.x=Math.min(700,Number(copy.x||0)+1);else copy.startDelaySec=Number(copy.startDelaySec||0)+2;events.push(copy);markDirty();chooseEvent(copy.id);api.previewEvent(copy.id);});
 
   panel.querySelector('[data-action="generate-line"]').addEventListener('click', () => {
     const item = selected(); if (!item) return;
@@ -768,7 +864,7 @@ export function mountSceneEditor(api) {
     } catch (error) { saveButton.disabled = false; setStatus(error.message, 'error'); }
   });
 
-  let dragOffset = { x: 0, y: 0 };
+  let dragOffset = { x: 0, y: 0 }, cameraDragging = false, cameraPointerX = 0, cameraSpaceHeld = false;
   function place(event) {
     if(!open)return;
     if(editorLayer==='lights'){
@@ -789,6 +885,18 @@ export function mountSceneEditor(api) {
     item.y = Number(clamp(point.y + dragOffset.y, -2.5, 5).toFixed(3));
     fillForm(); markDirty();
   }
+  api.canvas.addEventListener('pointerdown',event=>{
+    if(!open||!freeCamera||(!cameraSpaceHeld&&event.button!==1))return;
+    event.preventDefault();event.stopImmediatePropagation();cameraDragging=true;cameraPointerX=event.clientX;api.canvas.setPointerCapture(event.pointerId);document.documentElement.classList.add('dev-camera-panning');
+  },true);
+  api.canvas.addEventListener('pointermove',event=>{
+    if(!cameraDragging)return;
+    event.preventDefault();event.stopImmediatePropagation();const delta=cameraPointerX-event.clientX;cameraPointerX=event.clientX;cameraX=api.panFreeCamera(delta);updateCameraUi();
+  },true);
+  const stopCameraPan=event=>{if(!cameraDragging)return;event?.stopImmediatePropagation();cameraDragging=false;document.documentElement.classList.remove('dev-camera-panning');};
+  api.canvas.addEventListener('pointerup',stopCameraPan,true);
+  api.canvas.addEventListener('pointercancel',stopCameraPan,true);
+
   api.canvas.addEventListener('pointerdown', event => {
     if (!open) return;
     if(editorLayer==='lights'){
@@ -812,10 +920,16 @@ export function mountSceneEditor(api) {
   api.canvas.addEventListener('pointercancel', () => { if (dragging)(editorLayer==='lights'?renderLightList():editorLayer==='events'?renderEventList():renderList()); dragging = false; document.documentElement.classList.remove('dev-scene-dragging');if(placingEvent)setEventPlacementMode(false); });
 
   addEventListener('keydown', event => {
+    const typing=event.target instanceof HTMLInputElement||event.target instanceof HTMLTextAreaElement||event.target instanceof HTMLSelectElement||event.target?.isContentEditable;
+    if(!typing&&freeCamera&&event.code==='Space'){cameraSpaceHeld=true;event.preventDefault();return;}
+    if(!typing&&freeCamera&&['ArrowLeft','ArrowRight','a','d','A','D'].includes(event.key)){event.preventDefault();const direction=event.key==='ArrowLeft'||event.key.toLowerCase()==='a'?-1:1;moveFreeCamera(cameraX+direction*(event.shiftKey?15:2.5),{enable:false});return;}
     if (event.key === 'Escape' && followedEventId)return setCameraFollowMode(false);
     if (event.key === 'Escape' && placingEvent)return setEventPlacementMode(false);
+    if (event.key === 'Escape' && freeCamera)return setFreeCameraMode(false);
     if (event.key === 'Escape' && open) selectedId?choose(null):selectedLightId?chooseLight(null):selectedEventId?chooseEvent(null):toggle(false);
   });
+  addEventListener('keyup',event=>{if(event.code==='Space')cameraSpaceHeld=false;});
+  addEventListener('blur',()=>{cameraSpaceHeld=false;stopCameraPan();});
   addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });
 
   saveButton.disabled = true;
@@ -823,5 +937,7 @@ export function mountSceneEditor(api) {
   fillLandingForm();
   fillLandingStyleForm();
   updateGraffitiCount();
+  renderCameraMarkers();
+  updateCameraUi();
   setEditorLayer('assets');
 }

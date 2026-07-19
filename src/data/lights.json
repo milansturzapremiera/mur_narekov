@@ -140,8 +140,8 @@
     "name": "Svetlo - lampa 9",
     "x": 190,
     "y": -0.45,
-    "offsetX": 0.702,
-    "offsetY": 0.079,
+    "offsetX": 0.607,
+    "offsetY": 0.058,
     "angle": 0,
     "lengthM": 15,
     "widthM": 20,
@@ -149,7 +149,7 @@
     "haloM": 2.4,
     "intensity": 1.15,
     "color": "#ffd080",
-    "flicker": false,
+    "flicker": true,
     "lampId": "4f909968-c1c5-4080-ad2b-78ca8f9ad2ad"
   },
   {
@@ -234,7 +234,7 @@
     "haloM": 2.4,
     "intensity": 1.15,
     "color": "#ffd080",
-    "flicker": false,
+    "flicker": true,
     "lampId": "a5a74e2d-ceff-413e-bb23-a35009dec236"
   },
   {
@@ -242,8 +242,8 @@
     "name": "Svetlo - lampa 16",
     "x": 330,
     "y": -0.45,
-    "offsetX": 0.886,
-    "offsetY": 0.058,
+    "offsetX": 0.93,
+    "offsetY": 0.101,
     "angle": 0,
     "lengthM": 15,
     "widthM": 20,
@@ -251,7 +251,7 @@
     "haloM": 2.4,
     "intensity": 1.15,
     "color": "#ffd080",
-    "flicker": false,
+    "flicker": true,
     "lampId": "1f9ea299-9cde-49ae-a795-73987dab8b2e"
   },
   {
@@ -319,7 +319,7 @@
     "haloM": 2.4,
     "intensity": 1.15,
     "color": "#ffd080",
-    "flicker": false,
+    "flicker": true,
     "lampId": "ebac6a33-2177-4d20-989f-0ccb4ca62a0e"
   },
   {
@@ -370,7 +370,7 @@
     "haloM": 2.4,
     "intensity": 1.15,
     "color": "#ffd080",
-    "flicker": false,
+    "flicker": true,
     "lampId": "17e9f69a-1779-4fc7-8750-c84719a829f4"
   },
   {
@@ -446,8 +446,8 @@
     "name": "Svetlo - lampa 28",
     "x": 570,
     "y": -0.45,
-    "offsetX": 0.972,
-    "offsetY": 0.079,
+    "offsetX": 0.859,
+    "offsetY": 0.204,
     "angle": 0,
     "lengthM": 15,
     "widthM": 20,
@@ -455,7 +455,7 @@
     "haloM": 2.4,
     "intensity": 1.15,
     "color": "#ffd080",
-    "flicker": false,
+    "flicker": true,
     "lampId": "f86a2b55-ad50-4d22-87eb-1c237fc2f19f"
   },
   {
@@ -557,7 +557,7 @@
     "haloM": 2.4,
     "intensity": 1.15,
     "color": "#ffd080",
-    "flicker": false,
+    "flicker": true,
     "lampId": "6e82541a-da9e-49ee-a9d7-cfa600b5839f"
   }
 ]
