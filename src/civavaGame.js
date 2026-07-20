@@ -3,7 +3,7 @@ import './civavaGame.css';
 const WIDTH = 1000;
 const HEIGHT = 560;
 const GROUND = 486;
-const SLING = { x: 172, y: 402 };
+const SLING = { x: 178, y: 398, leftX: 143, rightX: 213, anchorY: 391 };
 const SHOTS = 3;
 const BEST_KEY = 'mur:civava-best';
 const DOG_SRC = '/assets/scene/1784366828126-pes.webp';
@@ -30,7 +30,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
         <section class="civava-cover civava-intro">
           <span>ODBOR BALISTICKEJ KYNOLÓGIE</span>
           <h2>Odisti čivavu.</h2>
-          <p>Potiahni ju dozadu, namier na papalášsku konštrukciu a pusti. Máš tri pokusy.</p>
+          <p>Potiahni ju doľava od praku, namier na papalášsku konštrukciu a pusti. Máš tri pokusy.</p>
           <div class="civava-how"><b>1</b><span>Potiahni</span><b>2</b><span>Namier</span><b>3</b><span>Pusti</span></div>
           <button class="civava-start" type="button">Nabiť čivavu</button>
         </section>
@@ -89,8 +89,8 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   }
 
   function resetProjectile() {
-    projectile = { x: SLING.x, y: SLING.y, vx: 0, vy: 0, r: 30, flying: false, rest: 0, age: 0, angle: 0 };
-    status.textContent = 'Potiahni čivavu dozadu a pusti.';
+    projectile = { x: SLING.x, y: SLING.y, vx: 0, vy: 0, r: 27, flying: false, rest: 0, age: 0, angle: 0 };
+    status.textContent = 'Potiahni čivavu doľava, namier a pusti.';
   }
 
   function resetGame() {
@@ -112,8 +112,8 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   function aimAt(point) {
     const dx = point.x - SLING.x, dy = point.y - SLING.y;
     const length = Math.hypot(dx, dy) || 1, limit = 126, scale = Math.min(1, limit / length);
-    projectile.x = SLING.x + Math.min(12, dx * scale);
-    projectile.y = SLING.y + dy * scale;
+    projectile.x = Math.min(SLING.x - 8, SLING.x + dx * scale);
+    projectile.y = clamp(SLING.y + dy * scale, SLING.y - 104, GROUND - projectile.r - 2);
   }
 
   function release() {
@@ -124,6 +124,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     projectile.vx = pullX * 5.65;
     projectile.vy = pullY * 5.65;
     projectile.flying = true;
+    projectile.x += 4;
     projectile.age = 0;
     shots -= 1;
     status.textContent = 'Čivava je vo vzduchu.';
@@ -161,7 +162,12 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
       const dx = projectile.x - nearestX, dy = projectile.y - nearestY;
       if (dx * dx + dy * dy > projectile.r * projectile.r) return;
       block.shake = .22;
-      if (speed > 245) destroyBlock(block);
+      if (speed > 245) {
+        destroyBlock(block);
+        projectile.vx *= .78; projectile.vy *= .9;
+        projectile.x += Math.sign(projectile.vx || 1) * 10;
+        return;
+      }
       if (Math.abs(dx) > Math.abs(dy)) projectile.vx *= -.42;
       else projectile.vy *= -.42;
       projectile.x += Math.sign(dx || projectile.vx) * 5;
@@ -230,7 +236,8 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     context.save(); context.translate(projectile.x, projectile.y); context.rotate(projectile.flying ? projectile.angle : 0);
     if (dog.complete && dog.naturalWidth) {
       const frameWidth = dog.naturalWidth / 5, frame = projectile.flying ? Math.floor(projectile.age * 10) % 5 : 0;
-      context.drawImage(dog, frame * frameWidth, 0, frameWidth, dog.naturalHeight, -41, -45, 82, 90);
+      const width = projectile.flying ? 76 : 68, height = projectile.flying ? 84 : 75;
+      context.drawImage(dog, frame * frameWidth, 0, frameWidth, dog.naturalHeight, -width/2, -height/2, width, height);
     } else {
       context.fillStyle = '#b96f39'; context.beginPath(); context.arc(0, 0, projectile.r, 0, Math.PI * 2); context.fill();
     }
@@ -242,8 +249,14 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     context.fillStyle = '#f7d400'; context.fillRect(0, 0, WIDTH, HEIGHT);
     context.fillStyle = '#f4efe5'; context.fillRect(0, GROUND, WIDTH, HEIGHT - GROUND);
     context.strokeStyle = '#171512'; context.lineWidth = 5; context.beginPath(); context.moveTo(0, GROUND); context.lineTo(WIDTH, GROUND); context.stroke();
-    context.fillStyle = '#171512'; context.fillRect(SLING.x - 38, SLING.y + 22, 18, GROUND - SLING.y - 22); context.fillRect(SLING.x + 20, SLING.y + 22, 18, GROUND - SLING.y - 22);
-    context.strokeStyle = '#7a3827'; context.lineWidth = 9; context.beginPath(); context.moveTo(SLING.x - 29, SLING.y + 28); context.lineTo(projectile.x, projectile.y); context.lineTo(SLING.x + 29, SLING.y + 28); context.stroke();
+    context.fillStyle = '#171512';
+    context.fillRect(SLING.leftX - 8, SLING.anchorY, 16, GROUND - SLING.anchorY);
+    context.fillRect(SLING.rightX - 8, SLING.anchorY, 16, GROUND - SLING.anchorY);
+    context.strokeStyle = '#7a3827'; context.lineWidth = 8; context.lineCap = 'round';
+    context.beginPath(); context.moveTo(SLING.leftX, SLING.anchorY);
+    if (projectile.flying) context.quadraticCurveTo(SLING.x, SLING.anchorY + 18, SLING.rightX, SLING.anchorY);
+    else { context.lineTo(projectile.x, projectile.y); context.lineTo(SLING.rightX, SLING.anchorY); }
+    context.stroke(); context.lineCap = 'butt';
     drawTrajectory();
     blocks.forEach(block => {
       if (block.dead) return;
@@ -271,9 +284,9 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   function close() { if (dialog.open) dialog.close(); }
   function cleanup() { cancelAnimationFrame(animation); dragging=false; document.documentElement.classList.remove('civava-game-open'); prompt.hidden=!available; mobileAction.hidden=!available; onClose(); }
 
-  canvas.addEventListener('pointerdown', event => { if (phase!=='playing'||projectile.flying||distance(canvasPoint(event),projectile)>76)return;event.preventDefault();dragging=true;pointerId=event.pointerId;canvas.setPointerCapture(pointerId);aimAt(canvasPoint(event));status.textContent='Pusti a leť.'; });
+  canvas.addEventListener('pointerdown', event => { if (phase!=='playing'||projectile.flying||distance(canvasPoint(event),projectile)>76)return;event.preventDefault();dragging=true;pointerId=event.pointerId;canvas.setPointerCapture(pointerId);aimAt(canvasPoint(event));status.textContent='Ťahaj doľava. Pusti a leť.'; });
   canvas.addEventListener('pointermove', event => { if(!dragging||event.pointerId!==pointerId)return;event.preventDefault();aimAt(canvasPoint(event)); });
-  canvas.addEventListener('pointerup', event => { if(event.pointerId===pointerId)release(); });
+  canvas.addEventListener('pointerup', event => { if(event.pointerId!==pointerId)return;release();if(canvas.hasPointerCapture?.(event.pointerId))canvas.releasePointerCapture(event.pointerId);pointerId=null; });
   canvas.addEventListener('pointercancel', () => { dragging=false;resetProjectile(); });
   prompt.addEventListener('click',open); mobileAction.addEventListener('click',open);
   dialog.querySelector('.civava-start').addEventListener('click',resetGame);
