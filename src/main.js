@@ -853,7 +853,7 @@ function render(now) {
   const currentMeter=Math.min(700,Math.floor(cameraSubjectX??state.x)+1);
   if(currentMeter!==renderedMeter){renderedMeter=currentMeter;$('#meterValue').textContent=`${currentMeter} – 700`;}
   const segedinItem=state.sceneItems.find(item=>String(item.name||'').toLocaleLowerCase('sk').startsWith('segedin'));
-  const segedinRange=segedinItem?Math.max(4.5,(Number(segedinItem.widthM)||7)/2+1.8):0;
+  const segedinRange=segedinItem?Math.max(1.8,Math.min(2.5,(Number(segedinItem.widthM)||7)*.32)):0;
   const segedinAvailable=Boolean(segedinItem&&state.accessGranted&&state.started&&!state.edit&&!state.sceneEditing&&!state.minigame&&visibilityAmount(segedinItem.visibility)>.01&&Math.abs(state.x-Number(segedinItem.x))<=segedinRange);
   if(!state.accessGranted){segedinGame.setAvailable(false);ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,innerWidth,innerHeight);requestAnimationFrame(render);return;}
   syncGraffitiIndex();
