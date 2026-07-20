@@ -9,6 +9,7 @@ const LAUNCH_Y = 9.5;
 const GRAVITY = 650;
 const BEST_KEY = 'mur:civava-best';
 const DOG_SRC = '/assets/scene/1784366828126-pes.webp';
+const BRICK_SRC = '/assets/wall/brick-wall-segment.webp';
 const LEVELS = [
   {
     name: 'Základná nominácia', shots: 3,
@@ -85,6 +86,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   const intro = host.querySelector('.civava-intro');
   const result = host.querySelector('.civava-result');
   const dog = new Image(); dog.src = DOG_SRC;
+  const brickWall = new Image(); brickWall.src = BRICK_SRC;
   document.body.append(prompt, mobileAction, dialog);
 
   let available = false;
@@ -288,6 +290,25 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     context.restore();
   }
 
+  function drawBrickBlock(block) {
+    const left=-block.w/2,top=-block.h/2,tileWidth=200,tileHeight=154;
+    context.save();context.beginPath();context.rect(left,top,block.w,block.h);context.clip();
+    if(brickWall.complete&&brickWall.naturalWidth){
+      const offsetX=(block.id*47)%tileWidth,offsetY=(block.id*29)%tileHeight;
+      for(let x=left-offsetX;x<left+block.w;x+=tileWidth){
+        for(let y=top-offsetY;y<top+block.h;y+=tileHeight)context.drawImage(brickWall,4,4,brickWall.naturalWidth-8,brickWall.naturalHeight-8,x,y,tileWidth,tileHeight);
+      }
+    }else{
+      context.fillStyle='#a84b32';context.fillRect(left,top,block.w,block.h);
+    }
+    context.fillStyle='rgba(18,15,13,.12)';context.fillRect(left,top,block.w,block.h);context.restore();
+    context.strokeStyle='#171512';context.lineWidth=4;context.strokeRect(left,top,block.w,block.h);
+    const fontSize=Math.min(17,Math.max(10,block.w/7));context.font=`700 ${fontSize}px "Barlow Condensed",sans-serif`;
+    const labelWidth=Math.min(block.w-6,Math.max(30,context.measureText(block.label).width+12)),labelHeight=Math.min(24,Math.max(16,fontSize+6));
+    context.fillStyle='rgba(18,15,13,.82)';context.fillRect(-labelWidth/2,-labelHeight/2,labelWidth,labelHeight);
+    context.fillStyle='#f4efe5';context.textAlign='center';context.textBaseline='middle';context.fillText(block.label,0,1,block.w-10);
+  }
+
   function draw(now) {
     context.clearRect(0, 0, WIDTH, HEIGHT);
     context.fillStyle = '#f7d400'; context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -305,8 +326,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     blocks.forEach(block => {
       if (block.dead) return;
       const shake = block.shake ? Math.sin(now * .09) * 5 : 0;
-      context.save(); context.translate(block.x + shake, block.y); context.fillStyle = '#f4efe5'; context.strokeStyle = '#171512'; context.lineWidth = 4; context.fillRect(-block.w/2,-block.h/2,block.w,block.h); context.strokeRect(-block.w/2,-block.h/2,block.w,block.h);
-      context.fillStyle = '#171512'; context.font = `700 ${Math.min(18,Math.max(11,block.w/7))}px "Barlow Condensed",sans-serif`; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(block.label,0,0,block.w-8); context.restore();
+      context.save();context.translate(block.x+shake,block.y);drawBrickBlock(block);context.restore();
     });
     targets.forEach((target, index) => {
       if (target.dead) return;
