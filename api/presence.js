@@ -11,6 +11,7 @@ export default async function handler(req, res) {
         skin: String(p.skin).slice(0, 20),
         name: String(p.name || '').trim().slice(0, 16),
         nameColor: /^#[0-9a-f]{6}$/i.test(p.nameColor) ? p.nameColor : '#f0c849',
+        zomriBag: p.zomriBag === true,
         dir: Number(p.dir) < 0 ? -1 : 1,
         velocity: Math.max(-60, Math.min(60, Number(p.velocity) || 0)),
         running: p.running === true, disconnected: p.disconnected === true,
