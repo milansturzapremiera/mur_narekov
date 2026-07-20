@@ -34,6 +34,7 @@ export function createSegedinGame({ onOpen = () => {}, onClose = () => {}, onBag
   const host = document.createElement('div');
   host.innerHTML = `
     <button class="segedin-prompt" type="button" hidden aria-label="Spustiť minihru Segedínový algoritmus" aria-haspopup="dialog" aria-controls="segedinGame"></button>
+    <button class="segedin-mobile-action" type="button" hidden aria-haspopup="dialog" aria-controls="segedinGame">Hrať</button>
     <dialog class="segedin-game" id="segedinGame" aria-labelledby="segedinGameTitle">
       <div class="segedin-shell" data-state="intro">
         <header class="segedin-topbar">
@@ -99,8 +100,9 @@ export function createSegedinGame({ onOpen = () => {}, onClose = () => {}, onBag
     </dialog>`;
 
   const prompt = host.querySelector('.segedin-prompt');
+  const mobileAction = host.querySelector('.segedin-mobile-action');
   const dialog = host.querySelector('.segedin-game');
-  document.body.append(prompt, dialog);
+  document.body.append(prompt, mobileAction, dialog);
 
   const shell = dialog.querySelector('.segedin-shell');
   const timeOutput = dialog.querySelector('#segedinTime');
@@ -282,6 +284,7 @@ export function createSegedinGame({ onOpen = () => {}, onClose = () => {}, onBag
   }
 
   prompt.addEventListener('click', open);
+  mobileAction.addEventListener('click', open);
   startButton.addEventListener('click', startGame);
   replayButton.addEventListener('click', startGame);
   returnButton.addEventListener('click', close);
@@ -328,7 +331,8 @@ export function createSegedinGame({ onOpen = () => {}, onClose = () => {}, onBag
         prompt.style.left = `${position.x}px`;
         prompt.style.top = `${position.y}px`;
       }
-      prompt.hidden = !available || dialog.open;
+      prompt.hidden = !available || dialog.open || position?.onScreen === false;
+      mobileAction.hidden = !available || dialog.open;
     }
   };
 }

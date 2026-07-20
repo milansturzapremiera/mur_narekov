@@ -862,7 +862,7 @@ function render(now) {
   const bands=sceneBands(), ground=bands.wallBottom, wallTop=bands.wallTop, off=state.camera;
   const segedinPoint=segedinAvailable?segedinInteractionPoint(segedinItem,off,wallTop,ground,viewAnchor):null;
   const segedinOnScreen=Boolean(segedinPoint&&segedinPoint.x>=-22&&segedinPoint.x<=innerWidth+22&&segedinPoint.y>=-22&&segedinPoint.y<=innerHeight+22);
-  segedinGame.setAvailable(segedinAvailable&&segedinOnScreen,segedinPoint);
+  segedinGame.setAvailable(segedinAvailable,segedinPoint?{...segedinPoint,onScreen:segedinOnScreen}:null);
   ctx.save();
   const viewAnchorX=viewAnchor;ctx.translate(viewAnchorX,ground);ctx.scale(state.zoom,state.zoom);ctx.translate(-viewAnchorX,-ground);
   ctx.save();ctx.beginPath();ctx.rect(0,0,innerWidth,wallTop);ctx.clip();drawSceneLayer(ctx,'behind',off,wallTop,ground,now);ctx.restore();
