@@ -4,6 +4,9 @@ const WIDTH = 1000;
 const HEIGHT = 560;
 const GROUND = 486;
 const SLING = { x: 178, y: 398, leftX: 143, rightX: 213, anchorY: 391 };
+const LAUNCH_X = 6.2;
+const LAUNCH_Y = 9.5;
+const GRAVITY = 650;
 const SHOTS = 3;
 const BEST_KEY = 'mur:civava-best';
 const DOG_SRC = '/assets/scene/1784366828126-pes.webp';
@@ -121,8 +124,8 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     dragging = false;
     const pullX = SLING.x - projectile.x, pullY = SLING.y - projectile.y, power = Math.hypot(pullX, pullY);
     if (power < 14) return resetProjectile();
-    projectile.vx = pullX * 5.65;
-    projectile.vy = pullY * 5.65;
+    projectile.vx = pullX * LAUNCH_X;
+    projectile.vy = pullY * LAUNCH_Y;
     projectile.flying = true;
     projectile.x += 4;
     projectile.age = 0;
@@ -206,7 +209,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     if (phase === 'ending') { resultTimer -= dt; if (resultTimer <= 0) showResult(); }
     if (phase !== 'playing' || !projectile.flying) return;
     projectile.age += dt;
-    projectile.vy += 760 * dt;
+    projectile.vy += GRAVITY * dt;
     projectile.x += projectile.vx * dt;
     projectile.y += projectile.vy * dt;
     projectile.angle = Math.atan2(projectile.vy, projectile.vx);
@@ -224,10 +227,10 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
 
   function drawTrajectory() {
     if (!dragging) return;
-    const vx = (SLING.x - projectile.x) * 5.65, vy = (SLING.y - projectile.y) * 5.65;
+    const vx = (SLING.x - projectile.x) * LAUNCH_X, vy = (SLING.y - projectile.y) * LAUNCH_Y;
     context.fillStyle = '#171512';
-    for (let t = .15; t <= 1.2; t += .15) {
-      const x = SLING.x + vx * t, y = SLING.y + vy * t + 380 * t * t;
+    for (let t = .12; t <= 1.32; t += .12) {
+      const x = projectile.x + vx * t, y = projectile.y + vy * t + GRAVITY * .5 * t * t;
       context.beginPath(); context.arc(x, y, Math.max(2, 5 - t * 2), 0, Math.PI * 2); context.fill();
     }
   }
