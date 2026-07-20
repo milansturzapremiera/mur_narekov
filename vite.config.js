@@ -7,6 +7,7 @@ const ROOT = process.cwd();
 const SCENE_FILE = path.join(ROOT, 'src', 'data', 'scene.json');
 const LIGHTS_FILE = path.join(ROOT, 'src', 'data', 'lights.json');
 const EVENTS_FILE = path.join(ROOT, 'src', 'data', 'events.json');
+const INTERACTIONS_FILE = path.join(ROOT, 'src', 'data', 'interactions.json');
 const TERRAIN_FILE = path.join(ROOT, 'src', 'data', 'terrain.json');
 const LANDING_FILE = path.join(ROOT, 'src', 'data', 'landing.json');
 const ASSET_DIR = path.join(ROOT, 'public', 'assets', 'scene');
@@ -78,6 +79,15 @@ function cleanLight(light) {
     angle:number('angle',0,-180,180),lengthM:number('lengthM',10,1,30),widthM:number('widthM',7,.5,20),softness:number('softness',.72,0,1),haloM:number('haloM',2.4,.2,8),
     intensity:number('intensity',1,.05,2),color:/^#[0-9a-f]{6}$/i.test(String(light.color||''))?String(light.color).toLowerCase():'#ffd080',
     flicker:light.flicker===true,...(light.lampId?{lampId:String(light.lampId).slice(0,80)}:{}),...(light.generatedFrom?{generatedFrom:String(light.generatedFrom).slice(0,80)}:{})
+  };
+}
+
+function cleanInteraction(interaction) {
+  const number=(key,fallback,min,max)=>{const value=Number(interaction[key]);return Number.isFinite(value)?Math.max(min,Math.min(max,value)):fallback;};
+  return {
+    id:String(interaction.id||'').slice(0,80),name:String(interaction.name||'Interakcia').trim().slice(0,60),
+    game:interaction.game==='civava'?'civava':'segedin',x:number('x',0,0,700),y:number('y',.7,-3,5),
+    radiusM:number('radiusM',2.2,.5,20),enabled:interaction.enabled!==false
   };
 }
 
@@ -202,18 +212,21 @@ function sceneEditorPlugin() {
             if (!Array.isArray(body.items) || body.items.length > 1000) throw new Error('Scéna obsahuje priveľa objektov.');
             if (!Array.isArray(body.lights) || body.lights.length > 1000) throw new Error('Scéna obsahuje priveľa svetiel.');
             if (!Array.isArray(body.events) || body.events.length > 500) throw new Error('Scéna obsahuje priveľa eventov.');
+            if (!Array.isArray(body.interactions) || body.interactions.length > 100) throw new Error('Scéna obsahuje priveľa interakcií.');
             const items = body.items.map(cleanSceneItem);
             const lights = body.lights.map(cleanLight);
             const events = body.events.map(cleanEvent);
+            const interactions = body.interactions.map(cleanInteraction);
             const terrain = cleanTerrain(body.terrain);
             const landing = cleanLanding(body.landing);
             await mkdir(path.dirname(SCENE_FILE), { recursive: true });
             await writeFile(SCENE_FILE, `${JSON.stringify(items, null, 2)}\n`, 'utf8');
             await writeFile(LIGHTS_FILE, `${JSON.stringify(lights, null, 2)}\n`, 'utf8');
             await writeFile(EVENTS_FILE, `${JSON.stringify(events, null, 2)}\n`, 'utf8');
+            await writeFile(INTERACTIONS_FILE, `${JSON.stringify(interactions, null, 2)}\n`, 'utf8');
             await writeFile(TERRAIN_FILE, `${JSON.stringify(terrain, null, 2)}\n`, 'utf8');
             await writeFile(LANDING_FILE, `${JSON.stringify(landing, null, 2)}\n`, 'utf8');
-            return json(res, 200, { saved: items.length, lights: lights.length, events: events.length });
+            return json(res, 200, { saved: items.length, lights: lights.length, events: events.length, interactions: interactions.length });
           }
 
           return json(res, 404, { error: 'Neznáma editorová operácia.' });

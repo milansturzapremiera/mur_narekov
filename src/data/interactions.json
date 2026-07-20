@@ -1,0 +1,20 @@
+[
+  {
+    "id": "game-segedin",
+    "name": "Segedínový algoritmus",
+    "game": "segedin",
+    "x": 41.05,
+    "y": 0.69,
+    "radiusM": 2.2,
+    "enabled": true
+  },
+  {
+    "id": "game-civava",
+    "name": "Čivava na odstrel",
+    "game": "civava",
+    "x": 74.05,
+    "y": 0.82,
+    "radiusM": 2.2,
+    "enabled": true
+  }
+]

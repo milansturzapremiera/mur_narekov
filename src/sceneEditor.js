@@ -50,7 +50,7 @@ async function request(path, body) {
 }
 
 export function mountSceneEditor(api) {
-  let items = api.getItems(), lights = api.getLights(), events = api.getEvents(), terrain = api.getTerrain(), landing = api.getLanding(), environmentMode = api.getEnvironmentMode(), selectedId = null, selectedLightId = null, selectedEventId = null, followedEventId = api.getFollowedEventId(), freeCamera = false, cameraX = api.getViewCenterX(), editorLayer = 'assets', open = false, dirty = false, dragging = false, placingEvent = false, landingElement = 'eyebrow';
+  let items = api.getItems(), lights = api.getLights(), events = api.getEvents(), interactions = api.getInteractions(), terrain = api.getTerrain(), landing = api.getLanding(), environmentMode = api.getEnvironmentMode(), selectedId = null, selectedLightId = null, selectedEventId = null, selectedInteractionId = null, followedEventId = api.getFollowedEventId(), freeCamera = false, cameraX = api.getViewCenterX(), editorLayer = 'assets', open = false, dirty = false, dragging = false, placingEvent = false, landingElement = 'eyebrow';
 
   const trigger = document.createElement('button');
   trigger.className = 'dev-scene-trigger';
@@ -91,6 +91,7 @@ export function mountSceneEditor(api) {
       <button type="button" data-editor-layer="assets" aria-pressed="true"><span>Assety</span><small>Obrázky v scéne</small></button>
       <button type="button" data-editor-layer="lights" aria-pressed="false"><span>Svetlá</span><small>Zdroje a kužele</small></button>
       <button type="button" data-editor-layer="events" aria-pressed="false"><span>Events</span><small>Pohyb a text</small></button>
+      <button type="button" data-editor-layer="interactions" aria-pressed="false"><span>Hry</span><small>Interakčné zóny</small></button>
     </nav>
     <details class="dev-landing">
       <summary><span>Text landing page</span><small>Úpravy vidíš okamžite</small></summary>
@@ -159,6 +160,11 @@ export function mountSceneEditor(api) {
       <p class="dev-scene-help">Eventy sa riadia reálnym časom. Začiatok môže byť po otvorení hry alebo v konkrétny dátum a čas.</p>
       <label class="dev-event-search"><span>Hľadať event</span><output data-event-count></output><input type="search" placeholder="Medveď, oznam, bublina…"></label>
       <div class="dev-event-list" aria-label="Eventy"></div>
+    </section>
+    <section class="dev-interaction-browser" hidden>
+      <button type="button" class="dev-add-interaction" data-action="add-interaction"><b>＋ Pridať interakciu</b><small>Voľný bod pre minihru</small></button>
+      <p class="dev-scene-help">Žltý bod určuje polohu značky HRAŤ. Priehľadná zóna na chodníku určuje, ako blízko musí stáť hráč.</p>
+      <div class="dev-interaction-list" aria-label="Interakčné zóny"></div>
     </section>
     <form class="dev-scene-properties" hidden>
       <div class="dev-detail-head"><button type="button" data-action="back-to-list">← Späť na zoznam</button><strong data-detail-name></strong></div>
@@ -253,6 +259,16 @@ export function mountSceneEditor(api) {
       <div class="dev-event-preview-actions"><button type="button" data-action="preview-event">▶ Prehrať ukážku teraz</button><button type="button" data-action="place-event-freely">⌖ Umiestniť voľne v scéne</button><button type="button" data-action="follow-event">◉ Sledovať kamerou</button></div>
       <div class="dev-event-actions"><button type="button" data-action="duplicate-event">Duplikovať event</button><button type="button" data-action="delete-event">Odstrániť event</button></div>
     </form>
+    <form class="dev-interaction-properties" hidden>
+      <div class="dev-detail-head"><button type="button" data-action="back-to-interactions">← Späť na interakcie</button><strong data-interaction-detail-name></strong></div>
+      <label>Názov<input name="name" maxlength="60"></label>
+      <label>Minihra<select name="game"><option value="segedin">01 · Segedínový algoritmus</option><option value="civava">02 · Čivava na odstrel</option></select></label>
+      <div class="dev-scene-pair"><label>Meter X<input name="x" type="number" min="0" max="700" step="0.05"></label><label>Poloha Y<input name="y" type="number" min="-3" max="5" step="0.01"></label></div>
+      <label>Aktivačný dosah <output data-interaction-output="radiusM"></output><input name="radiusM" type="range" min="0.5" max="20" step="0.1"></label>
+      <label class="dev-animation-toggle"><input name="enabled" type="checkbox"><span>Interakcia je aktívna</span></label>
+      <p class="dev-event-placement-help">Bod môžeš potiahnuť priamo v scéne. Dosah sa počíta doľava a doprava od zvoleného metra.</p>
+      <div class="dev-interaction-actions"><button type="button" data-action="duplicate-interaction">Duplikovať</button><button type="button" data-action="delete-interaction">Odstrániť</button></div>
+    </form>
     <details class="dev-maintenance">
       <summary><span>Údržba</span><small data-graffiti-count></small></summary>
       <div class="dev-graffiti-tools">
@@ -274,6 +290,7 @@ export function mountSceneEditor(api) {
   const list = panel.querySelector('.dev-scene-list');
   const lightList = panel.querySelector('.dev-light-list');
   const eventList = panel.querySelector('.dev-event-list');
+  const interactionList = panel.querySelector('.dev-interaction-list');
   const sceneDirectorHost = panel.querySelector('.dev-scene-director-mount');
   const cameraTools = panel.querySelector('.dev-camera-tools');
   const cameraToggle = panel.querySelector('[data-action="toggle-free-camera"]');
@@ -284,6 +301,7 @@ export function mountSceneEditor(api) {
   const form = panel.querySelector('.dev-scene-properties');
   const lightForm = panel.querySelector('.dev-light-properties');
   const eventForm = panel.querySelector('.dev-event-properties');
+  const interactionForm = panel.querySelector('.dev-interaction-properties');
   const status = panel.querySelector('.dev-scene-status');
   const saveButton = panel.querySelector('[data-action="save"]');
   const fileInput = panel.querySelector('.dev-upload input[type="file"]');
@@ -303,6 +321,7 @@ export function mountSceneEditor(api) {
   const detailName = panel.querySelector('[data-detail-name]');
   const lightDetailName = panel.querySelector('[data-light-detail-name]');
   const eventDetailName = panel.querySelector('[data-event-detail-name]');
+  const interactionDetailName = panel.querySelector('[data-interaction-detail-name]');
   const eventFileInput = panel.querySelector('.dev-event-upload input');
   const generatedCount = panel.querySelector('[data-generated-count]');
   const environmentForm = panel.querySelector('.dev-environment-form');
@@ -320,7 +339,7 @@ export function mountSceneEditor(api) {
   }
 
   function renderCameraMarkers() {
-    const positions=[...items.map(item=>item.x),...events.flatMap(event=>event.type==='text'?[event.x]:event.type==='walker'?[event.startX,event.endX]:[])].map(Number).filter(Number.isFinite);
+    const positions=[...items.map(item=>item.x),...events.flatMap(event=>event.type==='text'?[event.x]:event.type==='walker'?[event.startX,event.endX]:[]),...interactions.map(interaction=>interaction.x)].map(Number).filter(Number.isFinite);
     cameraMarkers.innerHTML=positions.slice(0,240).map(x=>`<i style="--map-x:${clamp(x,0,700)/7}%"></i>`).join('');
   }
 
@@ -379,6 +398,7 @@ export function mountSceneEditor(api) {
   function selected() { return items.find(item => item.id === selectedId); }
   function selectedLight() { return lights.find(light => light.id === selectedLightId); }
   function selectedEvent() { return events.find(event => event.id === selectedEventId); }
+  function selectedInteraction() { return interactions.find(interaction => interaction.id === selectedInteractionId); }
 
   function syncGenerated(item, fields) {
     items.filter(candidate => candidate.generatedFrom === item.id).forEach(copy => {
@@ -398,6 +418,7 @@ export function mountSceneEditor(api) {
     api.setItems(items);
     api.setLights(lights);
     api.setEvents(events);
+    api.setInteractions(interactions);
     renderCameraMarkers();
   }
 
@@ -520,8 +541,16 @@ export function mountSceneEditor(api) {
     updateEventOutputs(event);
   }
 
+  function fillInteractionForm() {
+    const interaction=selectedInteraction();interactionForm.hidden=!interaction;if(!interaction)return;
+    interactionDetailName.textContent=interaction.name;
+    ['name','game','x','y','radiusM'].forEach(key=>{interactionForm.elements[key].value=interaction[key]??'';});
+    interactionForm.elements.enabled.checked=interaction.enabled!==false;
+    interactionForm.querySelector('[data-interaction-output="radiusM"]').textContent=`${Number(interaction.radiusM||2.2).toFixed(1)} m`;
+  }
+
   function syncDetailState() {
-    const hasDetail=Boolean(selected()||selectedLight()||selectedEvent());panel.classList.toggle('show-detail',hasDetail);fillForm();fillLightForm();fillEventForm();
+    const hasDetail=Boolean(selected()||selectedLight()||selectedEvent()||selectedInteraction());panel.classList.toggle('show-detail',hasDetail);fillForm();fillLightForm();fillEventForm();fillInteractionForm();
   }
 
   function renderList() {
@@ -571,27 +600,35 @@ export function mountSceneEditor(api) {
     if(!visible.length){const empty=document.createElement('p');empty.className='dev-scene-empty';empty.textContent=legacyEvents.length?'Žiadny event nezodpovedá hľadaniu.':'Samostatné eventy môžeš pridať nižšie. Scénky spravuje režisér.';eventList.append(empty);}
     else visible.forEach(event=>{const button=document.createElement('button');button.type='button';button.className='dev-event-item';button.dataset.eventId=event.id;button.setAttribute('aria-pressed',String(event.id===selectedEventId));const icon=document.createElement('span');icon.className=`dev-event-icon is-${event.type}`;icon.textContent=event.type==='text'?'Aa':'→';const copy=document.createElement('span'),name=document.createElement('b'),meta=document.createElement('small');name.textContent=event.name;const visibility=event.visibility==='day'?'DEŇ':event.visibility==='night'?'NOC':'VŽDY';meta.textContent=`${event.type==='text'?'TEXT':'POHYB'} · ${visibility}`;copy.append(name,meta);button.append(icon,copy);eventList.append(button);});syncDetailState();
   }
+  function renderInteractionList() {
+    interactionList.replaceChildren();
+    if(!interactions.length){const empty=document.createElement('p');empty.className='dev-scene-empty';empty.textContent='Pridaj prvú interakčnú zónu.';interactionList.append(empty);}
+    else interactions.forEach(interaction=>{const button=document.createElement('button');button.type='button';button.className='dev-interaction-item';button.dataset.interactionId=interaction.id;button.setAttribute('aria-pressed',String(interaction.id===selectedInteractionId));const icon=document.createElement('span');icon.className='dev-interaction-icon';icon.textContent=interaction.game==='civava'?'02':'01';const copy=document.createElement('span'),name=document.createElement('b'),meta=document.createElement('small');name.textContent=interaction.name;meta.textContent=`${interaction.enabled===false?'VYPNUTÁ':'AKTÍVNA'} · ${Number(interaction.x).toFixed(1)} m · DOSAH ${Number(interaction.radiusM||2.2).toFixed(1)} m`;copy.append(name,meta);button.append(icon,copy);interactionList.append(button);});
+    syncDetailState();
+  }
 
   function choose(id) {
-    selectedId = id;selectedLightId=null;selectedEventId=null;
+    selectedId = id;selectedLightId=null;selectedEventId=null;selectedInteractionId=null;
     api.setSelected(id);
     api.setSelectedLight(null);
     api.setSelectedEvent(null);
+    api.setSelectedInteraction(null);
     renderList();
     panelBody.scrollTop = 0;
   }
 
   function chooseLight(id) {
-    selectedLightId=id;selectedId=null;selectedEventId=null;api.setSelected(null);api.setSelectedLight(id);api.setSelectedEvent(null);renderLightList();panelBody.scrollTop=0;
+    selectedLightId=id;selectedId=null;selectedEventId=null;selectedInteractionId=null;api.setSelected(null);api.setSelectedLight(id);api.setSelectedEvent(null);api.setSelectedInteraction(null);renderLightList();panelBody.scrollTop=0;
   }
-  function chooseEvent(id){selectedEventId=id;selectedId=null;selectedLightId=null;api.setSelected(null);api.setSelectedLight(null);api.setSelectedEvent(id);renderEventList();panelBody.scrollTop=0;}
+  function chooseEvent(id){selectedEventId=id;selectedId=null;selectedLightId=null;selectedInteractionId=null;api.setSelected(null);api.setSelectedLight(null);api.setSelectedEvent(id);api.setSelectedInteraction(null);renderEventList();panelBody.scrollTop=0;}
+  function chooseInteraction(id){selectedInteractionId=id;selectedId=null;selectedLightId=null;selectedEventId=null;api.setSelected(null);api.setSelectedLight(null);api.setSelectedEvent(null);api.setSelectedInteraction(id);renderInteractionList();panelBody.scrollTop=0;}
 
   function setEditorLayer(layer) {
     setCameraFollowMode(false);
-    editorLayer=['lights','events'].includes(layer)?layer:'assets';selectedId=null;selectedLightId=null;selectedEventId=null;api.setSelected(null);api.setSelectedLight(null);api.setSelectedEvent(null);api.setEditorLayer(editorLayer);
-    panel.querySelector('.dev-object-browser').hidden=editorLayer!=='assets';panel.querySelector('.dev-light-browser').hidden=editorLayer!=='lights';panel.querySelector('.dev-event-browser').hidden=editorLayer!=='events';
+    editorLayer=['lights','events','interactions'].includes(layer)?layer:'assets';selectedId=null;selectedLightId=null;selectedEventId=null;selectedInteractionId=null;api.setSelected(null);api.setSelectedLight(null);api.setSelectedEvent(null);api.setSelectedInteraction(null);api.setEditorLayer(editorLayer);
+    panel.querySelector('.dev-object-browser').hidden=editorLayer!=='assets';panel.querySelector('.dev-light-browser').hidden=editorLayer!=='lights';panel.querySelector('.dev-event-browser').hidden=editorLayer!=='events';panel.querySelector('.dev-interaction-browser').hidden=editorLayer!=='interactions';
     panel.querySelectorAll('[data-editor-layer]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.editorLayer===editorLayer)));
-    renderList();renderLightList();renderEventList();
+    renderList();renderLightList();renderEventList();renderInteractionList();
   }
 
   function toggle(force) {
@@ -607,7 +644,7 @@ export function mountSceneEditor(api) {
     if (open) {
       cameraX=api.getViewCenterX();updateCameraUi();renderCameraMarkers();
       updateGraffitiCount();
-      (selectedId?form.elements.name:selectedLightId?lightForm.elements.name:selectedEventId?eventForm.elements.name:editorLayer==='lights'?panel.querySelector('[data-action="add-light"]'):editorLayer==='events'?panel.querySelector('[data-action="add-text-event"]'):fileInput).focus();
+      (selectedId?form.elements.name:selectedLightId?lightForm.elements.name:selectedEventId?eventForm.elements.name:selectedInteractionId?interactionForm.elements.name:editorLayer==='lights'?panel.querySelector('[data-action="add-light"]'):editorLayer==='events'?panel.querySelector('[data-action="add-text-event"]'):editorLayer==='interactions'?panel.querySelector('[data-action="add-interaction"]'):fileInput).focus();
     }
   }
 
@@ -638,6 +675,7 @@ export function mountSceneEditor(api) {
   });
   panel.querySelector('[data-action="back-to-lights"]').addEventListener('click',()=>{chooseLight(null);lightSearch.focus();});
   panel.querySelector('[data-action="back-to-events"]').addEventListener('click',()=>{chooseEvent(null);eventSearch.focus();});
+  panel.querySelector('[data-action="back-to-interactions"]').addEventListener('click',()=>{chooseInteraction(null);panel.querySelector('[data-action="add-interaction"]').focus();});
   panel.querySelector('[data-action="reset-graffiti"]').addEventListener('click', () => {
     const removed = api.clearGraffiti();
     updateGraffitiCount();
@@ -721,6 +759,7 @@ export function mountSceneEditor(api) {
     lights.push(light);markDirty();chooseLight(light.id);api.notify('Zdroj svetla pridaný. Potiahni žltý bod na miesto.');
   });
   panel.querySelector('[data-action="add-text-event"]').addEventListener('click',()=>{const event={id:crypto.randomUUID(),name:'Textová bublina',type:'text',visibility:'always',startAt:'',startDelaySec:0,x:Number(api.getViewCenterX().toFixed(2)),y:.5,messages:['Napíš sem prvú správu.'],sequences:[['Napíš sem prvú správu.']],bubblesPerSequence:1,sequenceCount:1,repeatEvent:true,bubbleIntervalSec:3,bubbleDurationSec:2.5,repeatEverySec:15,widthM:5,fontSize:20,textColor:'#25211d',backgroundColor:'#f2eadb'};events.push(event);markDirty();chooseEvent(event.id);api.previewEvent(event.id);api.notify('Textový event pridaný. Umiestni ho voľne kdekoľvek v scéne.');});
+  panel.querySelector('[data-action="add-interaction"]').addEventListener('click',()=>{const interaction={id:crypto.randomUUID(),name:'Nová interakcia',game:'civava',x:Number(api.getViewCenterX().toFixed(2)),y:.75,radiusM:2.2,enabled:true};interactions.push(interaction);markDirty();chooseInteraction(interaction.id);api.notify('Interakcia pridaná. Potiahni žltý bod na ľubovoľné miesto.');});
 
   eventFileInput.addEventListener('change',async()=>{const file=eventFileInput.files?.[0];if(!file)return;if(!['image/png','image/jpeg','image/webp'].includes(file.type))return setStatus('Použi PNG, JPG alebo WebP.','error');if(file.size>8*1024*1024)return setStatus('Obrázok môže mať najviac 8 MB.','error');setStatus('Nahrávam event asset…','loading');eventFileInput.disabled=true;try{const dataUrl=await fileAsDataUrl(file),uploaded=await request('/__scene-editor/upload',{name:`event-${file.name.replace(/\.[^.]+$/,'')}`,dataUrl}),startX=api.getViewCenterX();const event={id:crypto.randomUUID(),name:file.name.replace(/\.[^.]+$/,'').slice(0,60)||'Pohybujúci sa asset',type:'walker',src:uploaded.src,visibility:'always',startAt:'',startDelaySec:0,widthM:3,startX:Number(startX.toFixed(2)),endX:Number(Math.min(700,startX+80).toFixed(2)),pathY:api.getDefaultEventY(),speedMps:4,direction:'right',loopDelaySec:10,runCount:0,animated:false,frames:5,fps:6,frameDirection:'horizontal',speechEnabled:false,speechMessages:['Ahoj!'],speechSequences:[['Ahoj!']],speechBubblesPerSequence:1,speechSequenceCount:1,speechRepeatEvent:true,speechDelaySec:2,speechBubbleIntervalSec:3,speechBubbleDurationSec:3,speechRepeatEverySec:12,speechWidthM:5,speechFontSize:20,speechTextColor:'#25211d',speechBackgroundColor:'#f2eadb'};events.push(event);markDirty();chooseEvent(event.id);api.previewEvent(event.id);api.notify('Pohybujúci sa event pridaný. Umiestni začiatok jeho trasy v scéne.');}catch(error){setStatus(error.message,'error');}finally{eventFileInput.disabled=false;eventFileInput.value='';}});
 
@@ -751,6 +790,7 @@ export function mountSceneEditor(api) {
   });
   lightList.addEventListener('click',event=>{const button=event.target.closest('[data-light-id]');if(button)chooseLight(button.dataset.lightId);});
   eventList.addEventListener('click',event=>{const button=event.target.closest('[data-event-id]');if(button)chooseEvent(button.dataset.eventId);});
+  interactionList.addEventListener('click',event=>{const button=event.target.closest('[data-interaction-id]');if(button)chooseInteraction(button.dataset.interactionId);});
 
   form.addEventListener('input', event => {
     const item = selected(), field = event.target.name;
@@ -806,6 +846,17 @@ export function mountSceneEditor(api) {
     if(['bubblesPerSequence','sequenceCount'].includes(field))renderSequenceEditors(event);if(['speechBubblesPerSequence','speechSequenceCount'].includes(field))renderSpeechSequenceEditors(event);updateEventOutputs(event);markDirty();if(['name','visibility','animated'].includes(field))renderEventList();
   });
 
+  interactionForm.addEventListener('input',inputEvent=>{
+    const interaction=selectedInteraction(),field=inputEvent.target.name;if(!interaction||!field)return;
+    if(field==='name')interaction.name=inputEvent.target.value.slice(0,60);
+    else if(field==='game')interaction.game=inputEvent.target.value==='civava'?'civava':'segedin';
+    else if(field==='x')interaction.x=clamp(inputEvent.target.value,0,700);
+    else if(field==='y')interaction.y=clamp(inputEvent.target.value,-3,5);
+    else if(field==='radiusM')interaction.radiusM=clamp(inputEvent.target.value,.5,20);
+    else if(field==='enabled')interaction.enabled=inputEvent.target.checked;
+    fillInteractionForm();markDirty();if(['name','game','x','radiusM','enabled'].includes(field))renderInteractionList();
+  });
+
   panel.querySelector('[data-action="duplicate"]').addEventListener('click', () => {
     const item = selected(); if (!item) return;
     const copy = { ...item, generatedFrom: undefined, id: crypto.randomUUID(), name: `${item.name} kópia`.slice(0, 60), x: Math.min(700, item.x + 1), phase: Math.random() };
@@ -827,6 +878,7 @@ export function mountSceneEditor(api) {
     const event=selectedEvent();if(!event)return;setEventPlacementMode(true);api.notify(event.type==='text'?'Klikni kamkoľvek v scéne. Textový event sa umiestni presne na toto miesto.':'Klikni kamkoľvek v scéne. Sem sa umiestni začiatok trasy assetu.');
   });
   panel.querySelector('[data-action="duplicate-event"]').addEventListener('click',()=>{const event=selectedEvent();if(!event)return;const copy={...event,id:crypto.randomUUID(),name:`${event.name} kópia`.slice(0,60),messages:event.messages?[...event.messages]:undefined,sequences:event.sequences?event.sequences.map(sequence=>[...sequence]):undefined,speechMessages:event.speechMessages?[...event.speechMessages]:undefined,speechSequences:event.speechSequences?event.speechSequences.map(sequence=>[...sequence]):undefined};if(copy.type==='text')copy.x=Math.min(700,Number(copy.x||0)+1);else copy.startDelaySec=Number(copy.startDelaySec||0)+2;events.push(copy);markDirty();chooseEvent(copy.id);api.previewEvent(copy.id);});
+  panel.querySelector('[data-action="duplicate-interaction"]').addEventListener('click',()=>{const interaction=selectedInteraction();if(!interaction)return;const copy={...interaction,id:crypto.randomUUID(),name:`${interaction.name} kópia`.slice(0,60),x:Math.min(700,Number(interaction.x)+2)};interactions.push(copy);markDirty();chooseInteraction(copy.id);});
 
   panel.querySelector('[data-action="generate-line"]').addEventListener('click', () => {
     const item = selected(); if (!item) return;
@@ -863,12 +915,13 @@ export function mountSceneEditor(api) {
     const light=selectedLight();if(!light)return;lights=lights.filter(candidate=>candidate.id!==light.id);selectedLightId=null;api.setSelectedLight(null);markDirty();renderLightList();api.notify(`${light.name} odstránené. Ulož projekt pre potvrdenie.`);
   });
   panel.querySelector('[data-action="delete-event"]').addEventListener('click',()=>{const event=selectedEvent();if(!event)return;if(event.id===followedEventId)setCameraFollowMode(false);events=events.filter(candidate=>candidate.id!==event.id);selectedEventId=null;api.setSelectedEvent(null);markDirty();renderEventList();api.notify(`${event.name} odstránený. Ulož projekt pre potvrdenie.`);});
+  panel.querySelector('[data-action="delete-interaction"]').addEventListener('click',()=>{const interaction=selectedInteraction();if(!interaction)return;interactions=interactions.filter(candidate=>candidate.id!==interaction.id);selectedInteractionId=null;api.setSelectedInteraction(null);markDirty();renderInteractionList();api.notify(`${interaction.name} odstránená. Ulož projekt pre potvrdenie.`);});
 
   saveButton.addEventListener('click', async () => {
     saveButton.disabled = true; setStatus('Zapisujem do projektu…', 'loading');
     try {
-      const result = await request('/__scene-editor/save', { items, lights, events, terrain, landing });
-      dirty = false; setStatus(`Uložené · ${result.saved} objektov · ${result.lights} svetiel · ${result.events} eventov`, 'success'); api.notify('Scéna, svetlá, eventy, terén a texty sú uložené v projekte.');
+      const result = await request('/__scene-editor/save', { items, lights, events, interactions, terrain, landing });
+      dirty = false; setStatus(`Uložené · ${result.saved} objektov · ${result.lights} svetiel · ${result.events} eventov · ${result.interactions} interakcií`, 'success'); api.notify('Scéna, svetlá, eventy, interakcie, terén a texty sú uložené v projekte.');
     } catch (error) { saveButton.disabled = false; setStatus(error.message, 'error'); }
   });
 
@@ -886,6 +939,9 @@ export function mountSceneEditor(api) {
       if(selectedSceneEvent.type==='text'){selectedSceneEvent.x=Number(clamp(position.x+dragOffset.x,0,700).toFixed(2));selectedSceneEvent.y=Number(clamp(position.y+dragOffset.y,-3,5).toFixed(3));}
       else{const oldStart=Number.isFinite(Number(selectedSceneEvent.startX))?Number(selectedSceneEvent.startX):0,oldEnd=Number.isFinite(Number(selectedSceneEvent.endX))?Number(selectedSceneEvent.endX):700,span=Math.abs(oldEnd-oldStart),right=selectedSceneEvent.direction!=='left',start=clamp(position.x+dragOffset.x,0,700);if(right){selectedSceneEvent.startX=Number(start.toFixed(2));selectedSceneEvent.endX=Number(Math.min(700,start+span).toFixed(2));}else{selectedSceneEvent.endX=Number(start.toFixed(2));selectedSceneEvent.startX=Number(Math.max(0,start-span).toFixed(2));}selectedSceneEvent.pathY=Number(clamp(position.y+dragOffset.y,-3,5).toFixed(3));}
       fillEventForm();markDirty();return;
+    }
+    if(editorLayer==='interactions'){
+      const interaction=selectedInteraction();if(!interaction)return;const position=api.moveInteractionFromScreen(event.clientX,event.clientY);interaction.x=Number(clamp(position.x+dragOffset.x,0,700).toFixed(2));interaction.y=Number(clamp(position.y+dragOffset.y,-3,5).toFixed(3));fillInteractionForm();markDirty();return;
     }
     const item = selected(); if (!item) return;
     const point = api.screenToScene(event.clientX, event.clientY);
@@ -913,6 +969,9 @@ export function mountSceneEditor(api) {
     if(editorLayer==='events'){
       const hitId=api.pickEventAt(event.clientX,event.clientY);if(hitId)chooseEvent(hitId);const selected=selectedEvent();if(!selected)return;const point=api.moveEventFromScreen(event.clientX,event.clientY),anchorX=selected.type==='text'?Number(selected.x||0):selected.direction==='left'?Number(selected.endX??700):Number(selected.startX??0),anchorY=selected.type==='text'?Number(selected.y||0):Number(selected.pathY??api.getDefaultEventY());dragOffset=hitId?{x:anchorX-point.x,y:anchorY-point.y}:{x:0,y:0};dragging=true;document.documentElement.classList.add('dev-scene-dragging');api.canvas.setPointerCapture(event.pointerId);if(!hitId)place(event);return;
     }
+    if(editorLayer==='interactions'){
+      const hitId=api.pickInteractionAt(event.clientX,event.clientY);if(hitId)chooseInteraction(hitId);const interaction=selectedInteraction();if(!interaction)return;const point=api.moveInteractionFromScreen(event.clientX,event.clientY);dragOffset=hitId?{x:Number(interaction.x)-point.x,y:Number(interaction.y)-point.y}:{x:0,y:0};dragging=true;document.documentElement.classList.add('dev-scene-dragging');api.canvas.setPointerCapture(event.pointerId);if(!hitId)place(event);return;
+    }
     const hitId = api.pickItemAt(event.clientX, event.clientY);
     if (hitId) choose(hitId);
     const item = selected(); if (!item) return;
@@ -924,8 +983,8 @@ export function mountSceneEditor(api) {
     if (!hitId) place(event);
   });
   api.canvas.addEventListener('pointermove', event => { if (dragging) place(event); });
-  api.canvas.addEventListener('pointerup', () => { if (dragging)(editorLayer==='lights'?renderLightList():editorLayer==='events'?renderEventList():renderList()); dragging = false; document.documentElement.classList.remove('dev-scene-dragging');if(placingEvent)setEventPlacementMode(false); });
-  api.canvas.addEventListener('pointercancel', () => { if (dragging)(editorLayer==='lights'?renderLightList():editorLayer==='events'?renderEventList():renderList()); dragging = false; document.documentElement.classList.remove('dev-scene-dragging');if(placingEvent)setEventPlacementMode(false); });
+  api.canvas.addEventListener('pointerup', () => { if (dragging)(editorLayer==='lights'?renderLightList():editorLayer==='events'?renderEventList():editorLayer==='interactions'?renderInteractionList():renderList()); dragging = false; document.documentElement.classList.remove('dev-scene-dragging');if(placingEvent)setEventPlacementMode(false); });
+  api.canvas.addEventListener('pointercancel', () => { if (dragging)(editorLayer==='lights'?renderLightList():editorLayer==='events'?renderEventList():editorLayer==='interactions'?renderInteractionList():renderList()); dragging = false; document.documentElement.classList.remove('dev-scene-dragging');if(placingEvent)setEventPlacementMode(false); });
 
   addEventListener('keydown', event => {
     const typing=event.target instanceof HTMLInputElement||event.target instanceof HTMLTextAreaElement||event.target instanceof HTMLSelectElement||event.target?.isContentEditable;
@@ -934,7 +993,7 @@ export function mountSceneEditor(api) {
     if (event.key === 'Escape' && followedEventId)return setCameraFollowMode(false);
     if (event.key === 'Escape' && placingEvent)return setEventPlacementMode(false);
     if (event.key === 'Escape' && freeCamera)return setFreeCameraMode(false);
-    if (event.key === 'Escape' && open) selectedId?choose(null):selectedLightId?chooseLight(null):selectedEventId?chooseEvent(null):toggle(false);
+    if (event.key === 'Escape' && open) selectedId?choose(null):selectedLightId?chooseLight(null):selectedEventId?chooseEvent(null):selectedInteractionId?chooseInteraction(null):toggle(false);
   });
   addEventListener('keyup',event=>{if(event.code==='Space')cameraSpaceHeld=false;});
   addEventListener('blur',()=>{cameraSpaceHeld=false;stopCameraPan();});

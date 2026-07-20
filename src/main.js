@@ -4,7 +4,9 @@ import initialTerrain from './data/terrain.json';
 import initialLanding from './data/landing.json';
 import initialLights from './data/lights.json';
 import initialEvents from './data/events.json';
+import initialInteractions from './data/interactions.json';
 import { createSegedinGame } from './segedinGame.js';
+import { createCivavaGame } from './civavaGame.js';
 
 const FONTS = [
   ['Impact', 'Impact, Haettenschweiler, sans-serif'], ['Krieda', '"Comic Sans MS", cursive'],
@@ -65,7 +67,7 @@ const state = {
   started: false, running: false, x: 0, lane: .5, camera: 0, dir: 1, moving: 0, velocity: 0, stride: 0, zoom: 1, targetZoom: 1,
   skin: 'tan', name: '', nameColor: '#f0c849', zomriBag: storedValue(SEGEDIN_BAG_KEY)==='1', zomriBagVersion: storedValue(SEGEDIN_BAG_VERSION_KEY)||'1', globalZomriBagVersion: '1',
   graffiti: [], others: [], edit: false, targetY: .5, targetX: 0, positionU: .5, section: 0, angle: 0,
-  sceneItems: structuredClone(initialScene), lightSources: structuredClone(initialLights), events: structuredClone(initialEvents), selectedSceneId: null, selectedLightId: null, selectedEventId: null, followedEventId: null, followCameraX: null, followCameraSnap: false, devFreeCamera: false, devCameraX: 0, editorLayer: 'assets', sceneEditing: false,
+  sceneItems: structuredClone(initialScene), lightSources: structuredClone(initialLights), events: structuredClone(initialEvents), interactions: structuredClone(initialInteractions), selectedSceneId: null, selectedLightId: null, selectedEventId: null, selectedInteractionId: null, followedEventId: null, followCameraX: null, followCameraSnap: false, devFreeCamera: false, devCameraX: 0, editorLayer: 'assets', sceneEditing: false,
   terrain: structuredClone(initialTerrain),
   landing: structuredClone(initialLanding),
   hasWritten: WRITE_LIMIT_ENABLED && storedValue(WRITTEN_KEY) === '1', savingGraffiti: false,
@@ -208,6 +210,17 @@ const segedinGame = createSegedinGame({
     state.zomriBag=true;state.zomriBagVersion=state.globalZomriBagVersion;storeValue(SEGEDIN_BAG_KEY,'1');storeValue(SEGEDIN_BAG_VERSION_KEY,state.zomriBagVersion);drawAvatar();
   }
 });
+const civavaGame = createCivavaGame({
+  onOpen: () => {
+    state.minigame=true;state.velocity=0;state.keys.clear();releaseTouchInput();state.presenceIdle=true;
+    announcePresenceLeave();
+  },
+  onClose: () => {
+    state.minigame=false;state.lastPlayerMovementAt=Date.now();state.presenceIdle=false;
+    if(state.started)canvas.focus();
+  }
+});
+const minigames = { segedin: segedinGame, civava: civavaGame };
 
 function setAccessGranted(granted) {
   state.accessGranted=granted;
@@ -723,19 +736,23 @@ function drawSceneLayer(c, layer, offset, wallTop, ground, now) {
   sceneLayerItems(layer).forEach(item => drawSceneItem(c,item,offset,wallTop,ground,now));
 }
 
-function segedinInteractionPoint(item,offset,wallTop,ground,anchorX) {
-  const image=loadedSceneImage(item.src),frames=Math.max(2,Math.min(60,Math.round(Number(item.frames)||5))),animated=item.animated===true&&frames>1,vertical=item.frameDirection==='vertical';
-  const sourceWidth=image?.naturalWidth?(animated&&!vertical?image.naturalWidth/frames:image.naturalWidth):1;
-  const sourceHeight=image?.naturalHeight?(animated&&vertical?image.naturalHeight/frames:image.naturalHeight):.72;
-  const width=(Number(item.widthM)||7)*PX_PER_M,height=width*sourceHeight/sourceWidth,angle=(Number(item.rotation)||0)*Math.PI/180;
-  const worldX=(Number(item.x)||0)*PX_PER_M-offset+height*Math.sin(angle),baseline=wallTop+(Number(item.y)||0)*(ground-wallTop),worldY=baseline-height*Math.cos(angle)-16/state.zoom;
+function interactionPoint(interaction,offset,wallTop,ground,anchorX) {
+  const worldX=(Number(interaction.x)||0)*PX_PER_M-offset,worldY=wallTop+(Number(interaction.y)||0)*(ground-wallTop);
   return{x:anchorX+(worldX-anchorX)*state.zoom,y:ground+(worldY-ground)*state.zoom,worldX,worldY};
 }
 
-function drawSegedinInteraction(c,point) {
+function drawGameInteraction(c,point) {
   if(!point)return;c.save();c.translate(point.worldX,point.worldY);c.scale(1/state.zoom,1/state.zoom);
   c.fillStyle='#f0c849';c.strokeStyle='#211d19';c.lineWidth=2;c.beginPath();c.arc(0,0,15,0,Math.PI*2);c.fill();c.stroke();
   c.fillStyle='#211d19';c.font='700 15px "Barlow Condensed",sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(mobileViewport.matches?'!':'E',0,1);c.restore();
+}
+
+function drawInteractionEditor(c,offset,wallTop,ground) {
+  if(!import.meta.env.DEV||!state.sceneEditing||state.editorLayer!=='interactions')return;
+  state.interactions.forEach(interaction=>{
+    const selected=interaction.id===state.selectedInteractionId,x=Number(interaction.x)*PX_PER_M-offset,y=wallTop+Number(interaction.y)*(ground-wallTop),radius=Number(interaction.radiusM||2.2)*PX_PER_M;
+    c.save();c.strokeStyle=selected?'#f0c849':'rgba(240,201,73,.72)';c.fillStyle=selected?'rgba(240,201,73,.16)':'rgba(240,201,73,.08)';c.lineWidth=selected?3:2;c.setLineDash([8,6]);c.beginPath();c.ellipse(x,ground-18,radius,18,0,0,Math.PI*2);c.fill();c.stroke();c.setLineDash([]);c.beginPath();c.arc(x,y,selected?10:6,0,Math.PI*2);c.fill();c.stroke();c.fillStyle='#25211d';c.font='700 11px sans-serif';c.textAlign='center';c.fillText(interaction.game==='civava'?'2':'1',x,y+4);c.restore();
+  });
 }
 
 function screenToWorldPoint(clientX,clientY) {
@@ -797,6 +814,8 @@ function pickEventAt(clientX,clientY) {
   const point=screenToWorldPoint(clientX,clientY);for(const event of [...state.events].reverse()){if(event.type==='scene')continue;if(event.type==='text'){const x=(Number(event.x)||0)*PX_PER_M-state.camera,y=point.bands.wallTop+(Number(event.y)||0)*(point.bands.wallBottom-point.bands.wallTop),width=Math.max(120,Math.min(520,(Number(event.widthM)||5)*PX_PER_M));if(Math.hypot(point.screenX-x,point.screenY-y)<=20||(Math.abs(point.screenX-x)<=width*.5&&point.screenY>=y-190&&point.screenY<=y+20))return event.id;}else{const start=(Number.isFinite(Number(event.startX))?Number(event.startX):0)*PX_PER_M-state.camera,end=(Number.isFinite(Number(event.endX))?Number(event.endX):700)*PX_PER_M-state.camera,pathY=Number.isFinite(Number(event.pathY))?Number(event.pathY):1.35,y=point.bands.wallTop+pathY*(point.bands.wallBottom-point.bands.wallTop);if(Math.hypot(point.screenX-start,point.screenY-y)<=24||Math.hypot(point.screenX-end,point.screenY-y)<=24)return event.id;}}return null;
 }
 function moveEventFromScreen(clientX,clientY) { const point=screenToWorldPoint(clientX,clientY);return{x:Math.max(0,Math.min(700,point.x)),y:Math.max(-3,Math.min(5,point.y))}; }
+function pickInteractionAt(clientX,clientY) { const point=screenToWorldPoint(clientX,clientY);for(const interaction of [...state.interactions].reverse()){const dx=(point.x-Number(interaction.x))*PX_PER_M,dy=(point.y-Number(interaction.y))*(point.bands.wallBottom-point.bands.wallTop);if(Math.hypot(dx,dy)<=24/state.zoom)return interaction.id;}return null; }
+function moveInteractionFromScreen(clientX,clientY) { const point=screenToWorldPoint(clientX,clientY);return{x:Math.max(0,Math.min(700,point.x)),y:Math.max(-3,Math.min(5,point.y))}; }
 
 function drawWallMountedAssets(c,offset,wallTop,ground,now) {
   sceneLayerItems('front').forEach(item=>{if(Number(item.y)<=1)drawSceneItem(c,item,offset,wallTop,ground,now);});
@@ -853,17 +872,16 @@ function render(now) {
   if((followedX!==null&&state.followCameraSnap)||cameraAtBoundary){state.camera=cameraTarget;state.followCameraSnap=false;}else state.camera+=(cameraTarget-state.camera)*smooth(followedX!==null?(reduced?18:7.5):reduced?12:running&&import.meta.env.DEV?10:4.2);
   const currentMeter=Math.min(700,Math.floor(cameraSubjectX??state.x)+1);
   if(currentMeter!==renderedMeter){renderedMeter=currentMeter;$('#meterValue').textContent=`${currentMeter} – 700`;}
-  const segedinItem=state.sceneItems.find(item=>String(item.name||'').toLocaleLowerCase('sk').startsWith('segedin'));
-  const segedinRange=segedinItem?Math.max(1.8,Math.min(2.5,(Number(segedinItem.widthM)||7)*.32)):0;
-  const segedinAvailable=Boolean(segedinItem&&state.accessGranted&&state.started&&!state.edit&&!state.sceneEditing&&!state.minigame&&visibilityAmount(segedinItem.visibility)>.01&&Math.abs(state.x-Number(segedinItem.x))<=segedinRange);
-  if(!state.accessGranted){segedinGame.setAvailable(false);ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,innerWidth,innerHeight);requestAnimationFrame(render);return;}
+  const canInteract=state.accessGranted&&state.started&&!state.edit&&!state.sceneEditing&&!state.minigame;
+  const activeInteraction=canInteract?state.interactions.filter(interaction=>interaction.enabled!==false&&minigames[interaction.game]&&Math.abs(state.x-Number(interaction.x))<=Number(interaction.radiusM||2.2)).sort((a,b)=>Math.abs(state.x-Number(a.x))-Math.abs(state.x-Number(b.x)))[0]:null;
+  if(!state.accessGranted){Object.values(minigames).forEach(game=>game.setAvailable(false));ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,innerWidth,innerHeight);requestAnimationFrame(render);return;}
   syncGraffitiIndex();
   ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,innerWidth,innerHeight);
   drawSky(ctx,state.camera,now);
   const bands=sceneBands(), ground=bands.wallBottom, wallTop=bands.wallTop, off=state.camera;
-  const segedinPoint=segedinAvailable?segedinInteractionPoint(segedinItem,off,wallTop,ground,viewAnchor):null;
-  const segedinOnScreen=Boolean(segedinPoint&&segedinPoint.x>=-22&&segedinPoint.x<=innerWidth+22&&segedinPoint.y>=-22&&segedinPoint.y<=innerHeight+22);
-  segedinGame.setAvailable(segedinAvailable,segedinPoint?{...segedinPoint,onScreen:segedinOnScreen}:null);
+  const activeInteractionPoint=activeInteraction?interactionPoint(activeInteraction,off,wallTop,ground,viewAnchor):null;
+  const activeInteractionOnScreen=Boolean(activeInteractionPoint&&activeInteractionPoint.x>=-22&&activeInteractionPoint.x<=innerWidth+22&&activeInteractionPoint.y>=-22&&activeInteractionPoint.y<=innerHeight+22);
+  Object.entries(minigames).forEach(([id,game])=>game.setAvailable(activeInteraction?.game===id,activeInteraction?.game===id?{...activeInteractionPoint,onScreen:activeInteractionOnScreen}:null));
   ctx.save();
   const viewAnchorX=viewAnchor;ctx.translate(viewAnchorX,ground);ctx.scale(state.zoom,state.zoom);ctx.translate(-viewAnchorX,-ground);
   ctx.save();ctx.beginPath();ctx.rect(0,0,innerWidth,wallTop);ctx.clip();drawSceneLayer(ctx,'behind',off,wallTop,ground,now);ctx.restore();
@@ -872,6 +890,7 @@ function render(now) {
   graffitiOldestFirst().forEach(g=>{const x=g.x*PX_PER_M-off;if(x<-180||x>innerWidth+180)return;drawGraffitiText(ctx,g,x,wallTop+(ground-wallTop)*g.y);});
   if(state.edit&&msg.value.trim())drawGraffitiText(ctx,{text:msg.value,font:selectedFont,color:selectedColor,angle:state.angle,size:selectedSize,wrap:selectedWrap},state.targetX*PX_PER_M-off,wallTop+(ground-wallTop)*state.targetY,true);
   groundBands(ctx,off,bands);
+  drawInteractionEditor(ctx,off,wallTop,ground);
   const baselineFor=lane=>bands.walkwayTop+8+Math.max(0,Math.min(1,lane))*(bands.walkwayHeight-16);
   const basePlayerScale=Math.max(.75,Math.min(1.05,innerHeight/760));
   const depthScale=lane=>Math.max(.65,Math.min(1.18,basePlayerScale*(.78+lane*.28)));
@@ -895,7 +914,7 @@ function render(now) {
   drawNightShade(ctx,state.nightMix);
   drawLightSources(ctx,off,wallTop,ground,now);
   drawLightGizmos(ctx,off,wallTop,ground);
-  if(segedinAvailable&&segedinOnScreen)drawSegedinInteraction(ctx,segedinPoint);
+  if(activeInteraction&&activeInteractionOnScreen)drawGameInteraction(ctx,activeInteractionPoint);
   state.events.filter(event=>event.type==='text').forEach(event=>{const bubbles=activeTextBubbles(event,wallNow);if(!bubbles.length&&import.meta.env.DEV&&state.sceneEditing&&state.editorLayer==='events'&&event.id===state.selectedEventId)bubbles.push({text:event.sequences?.[0]?.[0]||event.messages?.[0]||'TEXTOVÁ BUBLINA',opacity:.82,index:0});bubbles.forEach(bubble=>drawTextBubble(ctx,event,bubble,off,wallTop,ground));});
   drawEventGizmos(ctx,off,wallTop,ground);
   if(state.edit){
@@ -1070,6 +1089,8 @@ if (import.meta.env.DEV) {
     setLights: lights => { state.lightSources = structuredClone(lights); },
     getEvents: () => structuredClone(state.events),
     setEvents: events => { state.events = structuredClone(events); },
+    getInteractions: () => structuredClone(state.interactions),
+    setInteractions: interactions => { state.interactions = structuredClone(interactions); },
     getTerrain: () => structuredClone(state.terrain),
     setTerrain: terrain => { state.terrain = structuredClone(terrain); },
     getLanding: () => structuredClone(state.landing),
@@ -1086,12 +1107,13 @@ if (import.meta.env.DEV) {
     setSelected: id => { state.selectedSceneId = id; },
     setSelectedLight: id => { state.selectedLightId = id; },
     setSelectedEvent: id => { state.selectedEventId = id; },
+    setSelectedInteraction: id => { state.selectedInteractionId = id; },
     getFollowedEventId: () => state.followedEventId,
     setFollowedEvent: id => { state.followedEventId=state.events.some(event=>event.id===id&&event.type==='walker')?id:null;if(state.followedEventId)state.devFreeCamera=false;state.followCameraX=null;state.followCameraSnap=Boolean(state.followedEventId); },
     previewEvent: id => { if(id)EVENT_PREVIEW_STARTS.set(id,Date.now()); },
     previewEventAt: (id,seconds=0) => { if(id)EVENT_PREVIEW_STARTS.set(id,Date.now()-Math.max(0,Number(seconds)||0)*1000); },
     stopEventPreview: id => { if(id)EVENT_PREVIEW_STARTS.set(id,Number.POSITIVE_INFINITY); },
-    setEditorLayer: layer => { state.editorLayer = ['lights','events'].includes(layer) ? layer : 'assets'; },
+    setEditorLayer: layer => { state.editorLayer = ['lights','events','interactions'].includes(layer) ? layer : 'assets'; },
     setEditing: value => { state.sceneEditing = value; if(!value){state.followedEventId=null;state.followCameraX=null;state.followCameraSnap=false;state.devFreeCamera=false;} if (value && state.edit) closeEditor(); },
     getGraffitiCount: () => state.graffiti.length,
     clearGraffiti: () => {
@@ -1116,6 +1138,8 @@ if (import.meta.env.DEV) {
     getResolvedLightPosition: resolvedLightPosition,
     pickEventAt,
     moveEventFromScreen,
+    pickInteractionAt,
+    moveInteractionFromScreen,
     notify: toast
   }));
 }
