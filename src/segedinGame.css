@@ -32,6 +32,7 @@
 
 @media (pointer:coarse){.segedin-game button{min-height:48px}.segedin-close{min-width:44px}.segedin-ingredients button{touch-action:manipulation}}
 @media (max-width:760px),(pointer:coarse){.segedin-mobile-action{position:fixed;z-index:65;left:50%;bottom:max(76px,calc(env(safe-area-inset-bottom) + 66px));display:grid;min-width:76px;min-height:44px;padding:8px 14px;border:2px solid var(--ink);background:var(--yellow);color:var(--ink);box-shadow:3px 3px 0 var(--ink);place-items:center;font:700 .82rem var(--font-display);letter-spacing:.08em;text-transform:uppercase;transform:translateX(-50%);touch-action:manipulation}.segedin-mobile-action[hidden]{display:none}.segedin-mobile-action:active{transform:translate(-50%,2px);box-shadow:1px 1px 0 var(--ink)}.mobile-ui-hidden .segedin-mobile-action{opacity:0;visibility:hidden;pointer-events:none}}
+@media (max-width:760px),(pointer:coarse){.segedin-mobile-action{top:max(calc(env(safe-area-inset-top) + 88px),26dvh);bottom:auto;min-width:116px;min-height:52px;padding:12px 20px;box-shadow:4px 4px 0 var(--ink);font-size:1rem}.segedin-mobile-action:active{box-shadow:2px 2px 0 var(--ink)}}
 .segedin-cover{overflow-x:hidden}
 .segedin-result h2{max-width:19ch;padding-top:.12em;font:700 clamp(2.75rem,5.4vw,4.6rem)/1.08 var(--font-display);letter-spacing:-.025em;overflow-wrap:anywhere}
 .segedin-meter[data-meter="cream"]>i{background:var(--sg-paper)}
