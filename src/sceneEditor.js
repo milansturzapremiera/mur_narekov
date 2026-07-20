@@ -259,6 +259,10 @@ export function mountSceneEditor(api) {
         <p>Vyčistí všetky graffiti z lokálnej DEV steny.</p>
         <button type="button" data-action="reset-graffiti">Vyčistiť graffiti</button>
       </div>
+      <div class="dev-graffiti-tools">
+        <p>Odoberie ZOMRI tašku hráčovi v celej hre. Najlepšie skóre zostane zachované.</p>
+        <button type="button" data-action="reset-zomri-bag">Resetovať ZOMRI tašku</button>
+      </div>
     </details>
     </div>
     <footer class="dev-scene-footer">
@@ -638,6 +642,10 @@ export function mountSceneEditor(api) {
     const removed = api.clearGraffiti();
     updateGraffitiCount();
     api.notify(removed ? `Odstránené graffiti: ${removed}.` : 'Múr už je bez graffiti.');
+  });
+  panel.querySelector('[data-action="reset-zomri-bag"]').addEventListener('click', () => {
+    const removed = api.resetZomriBag();
+    api.notify(removed ? 'ZOMRI taška bola hráčovi odobratá.' : 'Hráč už ZOMRI tašku nemá.');
   });
 
   terrainForm.addEventListener('input', event => {

@@ -62,7 +62,7 @@ function getVisitorId() {
 const visitorId = getVisitorId();
 const state = {
   started: false, running: false, x: 0, lane: .5, camera: 0, dir: 1, moving: 0, velocity: 0, stride: 0, zoom: 1, targetZoom: 1,
-  skin: 'tan', name: '', nameColor: '#f0c849', zomriBag: storedValue(SEGEDIN_BAG_KEY)==='1'||Number(storedValue('mur:segedin-best'))>=3000,
+  skin: 'tan', name: '', nameColor: '#f0c849', zomriBag: storedValue(SEGEDIN_BAG_KEY)==='1',
   graffiti: [], others: [], edit: false, targetY: .5, targetX: 0, positionU: .5, section: 0, angle: 0,
   sceneItems: structuredClone(initialScene), lightSources: structuredClone(initialLights), events: structuredClone(initialEvents), selectedSceneId: null, selectedLightId: null, selectedEventId: null, followedEventId: null, followCameraX: null, followCameraSnap: false, devFreeCamera: false, devCameraX: 0, editorLayer: 'assets', sceneEditing: false,
   terrain: structuredClone(initialTerrain),
@@ -1088,6 +1088,13 @@ if (import.meta.env.DEV) {
       const removed = state.graffiti.length;
       state.graffiti = [];
       saveLocal([]);
+      return removed;
+    },
+    resetZomriBag: () => {
+      const removed = state.zomriBag;
+      state.zomriBag = false;
+      removeStoredValue(SEGEDIN_BAG_KEY);
+      drawAvatar();
       return removed;
     },
     screenToScene: (clientX, clientY) => { const point=screenToWorldPoint(clientX,clientY);return {x:Math.max(0,Math.min(700,point.x)),y:Math.max(-2.5,Math.min(5,point.y))}; },
