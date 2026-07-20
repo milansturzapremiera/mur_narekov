@@ -40,6 +40,7 @@
 .segedin-prompt{bottom:auto;min-height:0;padding:0}
 @media (max-width:760px){.segedin-cover p{font-size:1rem}.segedin-intro .segedin-how{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;max-width:390px}.segedin-how span{padding:9px 10px;font-size:.82rem}.segedin-how kbd{font-size:.78rem}}
 @media (max-width:760px){.segedin-result h2{max-width:15ch;font-size:clamp(2.25rem,9vw,3rem);line-height:1.12;letter-spacing:-.015em}}
+@media (max-width:760px){.segedin-board{grid-template-rows:auto auto auto auto;align-content:start}.segedin-cast{min-height:clamp(208px,61vw,240px)}.segedin-cast>div{inset:auto 0 26px;width:min(calc(100% - 16px),360px);aspect-ratio:768/450;margin-inline:auto;background-size:500% 100%}.segedin-ticket{min-height:0;align-content:start;gap:6px;padding:16px 18px}.segedin-ticket blockquote{line-height:1.08}}
 @media (prefers-reduced-motion:reduce){.segedin-cast>div,.segedin-stew i{animation:none!important}.segedin-ingredients button{transition-duration:.01ms!important}}
 
 @keyframes segedin-prompt-in{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
