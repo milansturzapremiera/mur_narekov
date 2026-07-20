@@ -42,6 +42,7 @@ const PRESENCE_IDLE_MS = 2 * 60 * 1000;
 const DEV_RUN_MULTIPLIER = import.meta.env.DEV ? 5 : 1;
 const NIGHT_LAMP_SRC = '/assets/scene/lampa_noc.webp';
 const SEGEDIN_BAG_KEY = 'mur:segedin-zomri-bag-v2';
+const SEGEDIN_BAG_VERSION_KEY = 'mur:segedin-zomri-bag-version';
 const isLampItem = item => String(item?.name||'').toLocaleLowerCase('sk').startsWith('lampa') || String(item?.src||'').toLowerCase().includes('lampa');
 function automaticNightAmount(date = new Date()) {
   const hour = date.getHours() + date.getMinutes() / 60;
@@ -62,7 +63,7 @@ function getVisitorId() {
 const visitorId = getVisitorId();
 const state = {
   started: false, running: false, x: 0, lane: .5, camera: 0, dir: 1, moving: 0, velocity: 0, stride: 0, zoom: 1, targetZoom: 1,
-  skin: 'tan', name: '', nameColor: '#f0c849', zomriBag: storedValue(SEGEDIN_BAG_KEY)==='1',
+  skin: 'tan', name: '', nameColor: '#f0c849', zomriBag: storedValue(SEGEDIN_BAG_KEY)==='1', zomriBagVersion: storedValue(SEGEDIN_BAG_VERSION_KEY)||'1', globalZomriBagVersion: '1',
   graffiti: [], others: [], edit: false, targetY: .5, targetX: 0, positionU: .5, section: 0, angle: 0,
   sceneItems: structuredClone(initialScene), lightSources: structuredClone(initialLights), events: structuredClone(initialEvents), selectedSceneId: null, selectedLightId: null, selectedEventId: null, followedEventId: null, followCameraX: null, followCameraSnap: false, devFreeCamera: false, devCameraX: 0, editorLayer: 'assets', sceneEditing: false,
   terrain: structuredClone(initialTerrain),
@@ -204,7 +205,7 @@ const segedinGame = createSegedinGame({
     if(state.started)canvas.focus();
   },
   onBagUnlocked: () => {
-    state.zomriBag=true;storeValue(SEGEDIN_BAG_KEY,'1');drawAvatar();
+    state.zomriBag=true;state.zomriBagVersion=state.globalZomriBagVersion;storeValue(SEGEDIN_BAG_KEY,'1');storeValue(SEGEDIN_BAG_VERSION_KEY,state.zomriBagVersion);drawAvatar();
   }
 });
 
@@ -938,14 +939,23 @@ async function loadWorld(){
   try{const r=await fetch('/api/graffiti',{headers:{'X-Writer-Id':visitorId}});if(!r.ok)throw 0;const data=await r.json();state.mode='shared';state.graffiti=data.items;state.hasWritten=WRITE_LIMIT_ENABLED&&Boolean(data.hasWritten);if(state.hasWritten)storeValue(WRITTEN_KEY,'1');else removeStoredValue(WRITTEN_KEY);if(!state.hasWritten)$('#editorNote').textContent=WRITE_LIMIT_ENABLED?'Máš jeden odkaz. Po uložení ho uvidia aj ďalší návštevníci.':'DEV režim: odkazy môžeš pridávať bez obmedzenia.';}catch{}finally{updateWriteAccess();}
 }
 loadWorld();
-function receivePresence(players,{replace=false}={}){
+async function loadZomriBagVersion(){try{const r=await fetch('/api/presence');if(!r.ok)return;const data=await r.json();applyZomriBagVersion(data.zomriBagVersion);}catch{}}
+loadZomriBagVersion();
+function applyZomriBagVersion(value) {
+  const version=String(value||'1').trim().slice(0,32)||'1';
+  state.globalZomriBagVersion=version;
+  if(state.zomriBag&&state.zomriBagVersion!==version){state.zomriBag=false;removeStoredValue(SEGEDIN_BAG_KEY);state.zomriBagVersion=version;storeValue(SEGEDIN_BAG_VERSION_KEY,version);drawAvatar();toast('ZOMRI tašky boli globálne resetované.');}
+  else if(!state.zomriBag&&state.zomriBagVersion!==version){state.zomriBagVersion=version;storeValue(SEGEDIN_BAG_VERSION_KEY,version);}
+}
+function receivePresence(players,{replace=false,zomriBagVersion}={}){
+  if(zomriBagVersion)applyZomriBagVersion(zomriBagVersion);
   const receivedAt=performance.now(),current=new Map(state.others.map(player=>[player.id,player])),incoming=new Set();
   (Array.isArray(players)?players:[]).forEach(packet=>{
     const id=String(packet?.id||'');if(!id||id===uid)return;incoming.add(id);
     const previous=current.get(id),packetTime=Number(packet.t)||Date.now();
     if(previous&&packetTime<previous.packetTime)return;
     const targetX=Math.max(0,Math.min(700,Number(packet.x)||0));
-    current.set(id,{...packet,id,targetX,displayX:Number.isFinite(previous?.displayX)?previous.displayX:targetX,velocity:Math.max(-60,Math.min(60,Number(packet.velocity)||0)),running:packet.running===true,packetTime,receivedAt,stride:previous?.stride||0});
+    current.set(id,{...packet,id,zomriBag:packet.zomriBag===true&&String(packet.zomriBagVersion||'1')===state.globalZomriBagVersion,targetX,displayX:Number.isFinite(previous?.displayX)?previous.displayX:targetX,velocity:Math.max(-60,Math.min(60,Number(packet.velocity)||0)),running:packet.running===true,packetTime,receivedAt,stride:previous?.stride||0});
   });
   if(replace)for(const id of current.keys())if(!incoming.has(id))current.delete(id);
   state.others=[...current.values()].filter(player=>receivedAt-player.receivedAt<16000);
@@ -962,9 +972,9 @@ setInterval(async()=>{
   if(!state.started)return;
   if(state.minigame){if(!state.presenceIdle){state.presenceIdle=true;announcePresenceLeave();}return;}
   if(Date.now()-state.lastPlayerMovementAt>=PRESENCE_IDLE_MS){if(!state.presenceIdle){state.presenceIdle=true;state.velocity=0;state.running=false;announcePresenceLeave();}return;}
-  const me={id:uid,x:state.x,lane:state.lane,skin:state.skin,name:state.name,nameColor:state.nameColor,zomriBag:state.zomriBag,dir:state.dir,velocity:state.velocity,running:state.running,t:Date.now()};
+  const me={id:uid,x:state.x,lane:state.lane,skin:state.skin,name:state.name,nameColor:state.nameColor,zomriBag:state.zomriBag,zomriBagVersion:state.zomriBagVersion,dir:state.dir,velocity:state.velocity,running:state.running,t:Date.now()};
   channel?.postMessage({type:'presence',players:[me]});
-  if(state.mode==='shared'&&!presenceRequestPending){presenceRequestPending=true;try{const r=await fetch('/api/presence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(me)});if(r.ok)receivePresence((await r.json()).players,{replace:true});}catch{}finally{presenceRequestPending=false;}}
+  if(state.mode==='shared'&&!presenceRequestPending){presenceRequestPending=true;try{const r=await fetch('/api/presence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(me)});if(r.ok){const data=await r.json();receivePresence(data.players,{replace:true,zomriBagVersion:data.zomriBagVersion});}}catch{}finally{presenceRequestPending=false;}}
 },1000);
 
 $('#characterForm').addEventListener('change',e=>{if(e.target.name==='skin')state.skin=e.target.value;drawAvatar();});
@@ -1094,6 +1104,8 @@ if (import.meta.env.DEV) {
       const removed = state.zomriBag;
       state.zomriBag = false;
       removeStoredValue(SEGEDIN_BAG_KEY);
+      state.zomriBagVersion=state.globalZomriBagVersion;
+      storeValue(SEGEDIN_BAG_VERSION_KEY,state.zomriBagVersion);
       drawAvatar();
       return removed;
     },
