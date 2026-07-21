@@ -8,6 +8,7 @@ const LAUNCH_X = 6.2;
 const LAUNCH_Y = 9.5;
 const GRAVITY = 650;
 const BEST_KEY = 'mur:civava-best';
+const COMPANION_SCORE = 60000;
 const DOG_SRC = '/assets/scene/1784366828126-pes.webp';
 const BRICK_SRC = '/assets/wall/brick-wall-segment.webp';
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -76,7 +77,7 @@ const LEVELS = [
 const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value)));
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {}) {
+export function createCivavaGame({ onOpen = () => {}, onClose = () => {}, onCompanionUnlocked = () => {} } = {}) {
   const host = document.createElement('div');
   host.innerHTML = `
     <button class="civava-prompt" type="button" hidden aria-label="Spustiť minihru Angry Čivava" aria-haspopup="dialog" aria-controls="civavaGame"></button>
@@ -95,7 +96,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
         <section class="civava-cover civava-intro">
           <span>ODBOR BALISTICKEJ KYNOLÓGIE</span>
           <h2>Odisti čivavu.</h2>
-          <p>Zhoď všetkých papalášov v desiatich konštrukciách. Počas letu ťukni do plochy alebo stlač medzerník — čivava raz za výstrel štekne a tlakovou vlnou odpáli okolie.</p>
+          <p>Zhoď všetkých papalášov v desiatich konštrukciách. Počas letu ťukni do plochy alebo stlač medzerník — čivava raz za výstrel štekne a tlakovou vlnou odpáli okolie. Za 60 000 bodov odomkneš Papalášskeho plašiča, ktorý ťa bude sprevádzať pri múre.</p>
           <div class="civava-how"><b>1</b><span>Potiahni</span><b>2</b><span>Namier</span><b>3</b><span>Pusti</span><b>4</b><span>Štekni</span></div>
           <button class="civava-start" type="button">Nabiť čivavu</button>
         </section>
@@ -354,10 +355,12 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   function showResult() {
     phase = 'result';
     let best = 0; try { best = Number(localStorage.getItem(BEST_KEY)) || 0; if (score > best) localStorage.setItem(BEST_KEY, String(score)); } catch {}
-    dialog.querySelector('[data-result-title]').textContent = completedRun ? 'Celý systém sa zosypal.' : 'Konštrukcia stále drží.';
+    const companionUnlocked = score >= COMPANION_SCORE;
+    if (companionUnlocked) onCompanionUnlocked(score);
+    dialog.querySelector('[data-result-title]').textContent = companionUnlocked ? 'Papalášsky plašič odomknutý.' : completedRun ? 'Celý systém sa zosypal.' : 'Konštrukcia stále drží.';
     dialog.querySelector('[data-final-score]').textContent = String(score);
     const progress = `${completedRun ? LEVELS.length : levelIndex} z ${LEVELS.length} levelov dokončených.`;
-    dialog.querySelector('[data-result-note]').textContent = score > best ? `${progress} Nový znalecký rekord.` : completedRun ? `${progress} Všetky funkcie boli otrasené.` : `${progress} Rozpočet prežil ďalšie obdobie.`;
+    dialog.querySelector('[data-result-note]').textContent = companionUnlocked ? `${progress} Angry Čivava ťa odteraz sprevádza pri múre a uvidia ju aj ostatní hráči.` : score > best ? `${progress} Nový znalecký rekord.` : completedRun ? `${progress} Všetky funkcie boli otrasené.` : `${progress} Rozpočet prežil ďalšie obdobie.`;
     result.hidden = false;
     dialog.querySelector('.civava-replay').focus();
   }

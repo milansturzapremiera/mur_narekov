@@ -45,6 +45,10 @@ const DEV_RUN_MULTIPLIER = import.meta.env.DEV ? 5 : 1;
 const NIGHT_LAMP_SRC = '/assets/scene/lampa_noc.webp';
 const SEGEDIN_BAG_KEY = 'mur:segedin-zomri-bag-v2';
 const SEGEDIN_BAG_VERSION_KEY = 'mur:segedin-zomri-bag-version';
+const CIVAVA_COMPANION_KEY = 'mur:angry-civava-companion-v1';
+const CIVAVA_COMPANION_ENABLED_KEY = 'mur:angry-civava-companion-enabled-v1';
+const CIVAVA_COMPANION_VERSION_KEY = 'mur:angry-civava-companion-version';
+const CIVAVA_COMPANION_SRC = '/assets/scene/1784366828126-pes.webp';
 const isLampItem = item => String(item?.name||'').toLocaleLowerCase('sk').startsWith('lampa') || String(item?.src||'').toLowerCase().includes('lampa');
 function automaticNightAmount(date = new Date()) {
   const hour = date.getHours() + date.getMinutes() / 60;
@@ -65,7 +69,7 @@ function getVisitorId() {
 const visitorId = getVisitorId();
 const state = {
   started: false, running: false, x: 0, lane: .5, camera: 0, dir: 1, moving: 0, velocity: 0, stride: 0, zoom: 1, targetZoom: 1,
-  skin: 'tan', name: '', nameColor: '#f0c849', zomriBag: storedValue(SEGEDIN_BAG_KEY)==='1', zomriBagVersion: storedValue(SEGEDIN_BAG_VERSION_KEY)||'1', globalZomriBagVersion: '1',
+  skin: 'tan', name: '', nameColor: '#f0c849', zomriBag: storedValue(SEGEDIN_BAG_KEY)==='1', zomriBagVersion: storedValue(SEGEDIN_BAG_VERSION_KEY)||'1', globalZomriBagVersion: '1', civavaCompanionUnlocked: storedValue(CIVAVA_COMPANION_KEY)==='1', civavaCompanion: storedValue(CIVAVA_COMPANION_KEY)==='1'&&storedValue(CIVAVA_COMPANION_ENABLED_KEY)!=='0', civavaCompanionVersion: storedValue(CIVAVA_COMPANION_VERSION_KEY)||'1', globalCivavaCompanionVersion: '1', companionX: null,
   graffiti: [], others: [], edit: false, targetY: .5, targetX: 0, positionU: .5, section: 0, angle: 0,
   sceneItems: structuredClone(initialScene), lightSources: structuredClone(initialLights), events: structuredClone(initialEvents), interactions: structuredClone(initialInteractions), selectedSceneId: null, selectedLightId: null, selectedEventId: null, selectedInteractionId: null, followedEventId: null, followCameraX: null, followCameraSnap: false, devFreeCamera: false, devCameraX: 0, editorLayer: 'assets', sceneEditing: false,
   terrain: structuredClone(initialTerrain),
@@ -121,6 +125,9 @@ document.querySelector('#app').innerHTML = `
     </div>
     <button class="mobile-ui-toggle" id="mobileUiToggle" type="button" aria-pressed="false" aria-label="Skryť rozhranie">
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.6"></circle><path class="eye-slash" d="m4 4 16 16"></path></svg>
+    </button>
+    <button class="companion-toggle" id="companionToggle" type="button" hidden aria-pressed="true" aria-label="Vypnúť companion Čivavu" title="Companion Čivava">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><ellipse cx="12" cy="15.2" rx="5.2" ry="4.4"></ellipse><circle cx="6.1" cy="9.4" r="2.1"></circle><circle cx="10.1" cy="6.5" r="2.1"></circle><circle cx="14.2" cy="6.5" r="2.1"></circle><circle cx="18" cy="9.4" r="2.1"></circle><path class="companion-slash" d="m4 4 16 16"></path></svg>
     </button>
     <button class="write-button" id="writeButton" type="button"><span>＋</span> Zanechať odkaz</button>
     <div class="touch-controls" aria-label="Pohyb po chodníku">
@@ -218,6 +225,10 @@ const civavaGame = createCivavaGame({
   onClose: () => {
     state.minigame=false;state.lastPlayerMovementAt=Date.now();state.presenceIdle=false;
     if(state.started)canvas.focus();
+  },
+  onCompanionUnlocked: () => {
+    if(!state.civavaCompanionUnlocked){state.civavaCompanionUnlocked=true;state.civavaCompanion=true;state.companionX=null;state.civavaCompanionVersion=state.globalCivavaCompanionVersion;storeValue(CIVAVA_COMPANION_KEY,'1');storeValue(CIVAVA_COMPANION_ENABLED_KEY,'1');storeValue(CIVAVA_COMPANION_VERSION_KEY,state.civavaCompanionVersion);}
+    updateCompanionControl();
   }
 });
 const minigames = { segedin: segedinGame, civava: civavaGame };
@@ -338,10 +349,12 @@ const wallSegmentImage = new Image();
 const wallPillarImage = new Image();
 const lowWallImage = new Image();
 const grassImage = new Image();
+const civavaCompanionImage = new Image();
 wallSegmentImage.decoding = 'async';
 wallPillarImage.decoding = 'async';
 lowWallImage.decoding = 'async';
 grassImage.decoding = 'async';
+civavaCompanionImage.decoding = 'async';
 wallSegmentImage.src = '/assets/wall/brick-wall-segment.webp';
 wallPillarImage.src = '/assets/wall/brick-pillar.webp';
 lowWallImage.src = '/assets/wall/maly-murik.webp';
@@ -410,6 +423,38 @@ function drawPerson(c, x, ground, scale, p, motion=0, stride=0, walkEnergy=Math.
     c.fillStyle='#171614';c.beginPath();c.arc(-3.8,-91,1.2,0,Math.PI*2);c.arc(5.6,-91,1.2,0,Math.PI*2);c.fill();
   }
   c.restore();
+}
+
+function companionWorldX(player, ownerX, dt) {
+  const direction=player.dir<0?-1:1,target=Math.max(0,Math.min(700,ownerX-direction*1.05));
+  if(!Number.isFinite(player.companionX)||reducedMotion.matches)player.companionX=target;
+  else player.companionX+=(target-player.companionX)*(1-Math.exp(-Math.min(.05,dt)*7.5));
+  return player.companionX;
+}
+
+function companionBarkOffset(player) {
+  const source=String(player.id||player.name||uid);let hash=0;
+  for(let index=0;index<source.length;index+=1)hash=(hash*31+source.charCodeAt(index))>>>0;
+  return hash%17000;
+}
+
+function drawCivavaCompanion(c,x,baseline,scale,player,stride,walkEnergy,wallNow) {
+  if(!player.civavaCompanion)return;
+  if(!civavaCompanionImage.src)civavaCompanionImage.src=CIVAVA_COMPANION_SRC;
+  if(!civavaCompanionImage.complete||!civavaCompanionImage.naturalWidth)return;
+  const moving=walkEnergy>.025,phase=((stride%(Math.PI*2))+Math.PI*2)%(Math.PI*2);
+  const frame=moving?Math.floor(phase/(Math.PI/2))%4:4,bob=reducedMotion.matches?0:[0,1.5,3,1.5][frame]||0;
+  const frameWidth=civavaCompanionImage.naturalWidth/5,width=53*scale,height=57*scale,direction=player.dir<0?-1:1;
+  c.save();c.translate(x,baseline-bob*scale);c.scale(direction>0?-1:1,1);
+  c.drawImage(civavaCompanionImage,frame*frameWidth,0,frameWidth,civavaCompanionImage.naturalHeight,-width/2,-height,width,height);
+  c.restore();
+  const barkCycle=(wallNow+companionBarkOffset(player))%19000;
+  if(!moving&&barkCycle<900){
+    const labelY=baseline-height-13*scale;
+    c.save();c.font=`700 ${Math.max(9,10*scale)}px "Archivo Black",sans-serif`;c.textAlign='center';c.textBaseline='middle';
+    c.fillStyle='#171512';c.fillRect(x-23*scale,labelY-10*scale,46*scale,20*scale);
+    c.fillStyle='#f7d400';c.fillText('HAF!',x,labelY+1);c.restore();
+  }
 }
 
 function drawAvatar(){ actx.clearRect(0,0,180,220); drawPerson(actx,90,210,1.75,{...state,dir:1},0,0); }
@@ -899,7 +944,7 @@ function render(now) {
   sceneLayerItems('front').forEach(item=>{if(Number(item.y)<=1)return;const width=item.widthM*PX_PER_M,x=item.x*PX_PER_M-off;if(x+width/2<0||x-width/2>innerWidth)return;foreground.push({y:wallTop+item.y*(ground-wallTop),draw:()=>drawSceneItem(ctx,item,off,wallTop,ground,now)});});
   state.events.filter(event=>event.type==='walker').forEach(event=>{const active=walkerEventState(event,wallNow);if(!active)return;const pathY=Number(event.pathY),lane=Math.max(0,Math.min(1,Number(event.lane)||.5)),baseline=Number.isFinite(pathY)?wallTop+pathY*(ground-wallTop):baselineFor(lane),speeches=activeWalkerSpeeches(event,wallNow);foreground.push({y:baseline,draw:()=>drawEventWalker(ctx,event,active.x,baseline,off,now,active.dir,speeches)});});
   state.events.filter(event=>event.type==='scene').forEach(scene=>{const playback=scenePlaybackState(scene,wallNow);if(!playback)return;(Array.isArray(scene.actors)?scene.actors:[]).forEach(actor=>{if(!actor.src)return;const active=sceneActorState(actor,playback.time),pathY=Number(actor.pathY),baseline=Number.isFinite(pathY)?wallTop+pathY*(ground-wallTop):baselineFor(.5),activeCue=activeSceneCue(scene,actor.id,playback.time),cue=activeCue?.cue,renderActor={...actor,visibility:scene.visibility,speechWidthM:Number(cue?.widthM)||5,speechFontSize:Number(cue?.fontSize)||20,speechTextColor:cue?.textColor||'#25211d',speechBackgroundColor:cue?.backgroundColor||'#f2eadb'};foreground.push({y:baseline,draw:()=>drawEventWalker(ctx,renderActor,active.x,baseline,off,now,active.dir,activeCue?[activeCue.speech]:[])});});});
-  if(followedX===null)foreground.push({y:playerBaseline,draw:()=>{drawPerson(ctx,playerX,playerBaseline,playerScale,state,state.velocity/3.2,state.stride,movementEnergy);drawNameLabel(ctx,playerX,playerBaseline,playerScale,state.name,state.nameColor,state.zomriBag);}});
+  if(followedX===null){const companionX=state.civavaCompanion?companionWorldX(state,state.x,dt)*PX_PER_M-off:playerX;foreground.push({y:playerBaseline,draw:()=>{drawCivavaCompanion(ctx,companionX,playerBaseline,playerScale,state,state.stride,movementEnergy,wallNow);drawPerson(ctx,playerX,playerBaseline,playerScale,state,state.velocity/3.2,state.stride,movementEnergy);drawNameLabel(ctx,playerX,playerBaseline,playerScale,state.name,state.nameColor,state.zomriBag);}});}
   if(followedX===null)state.others.forEach(p=>{
     const predictionAge=Math.max(0,Math.min(1.25,(now-p.receivedAt)/1000));
     const predictedX=Math.max(0,Math.min(700,p.targetX+p.velocity*predictionAge));
@@ -908,7 +953,7 @@ function render(now) {
     const remoteEnergy=Math.min(1,Math.max(Math.abs(p.velocity)/5.8,Math.min(1,Math.abs(correction)*.75)));
     p.stride+=remoteEnergy*dt*(p.running?7.4:4.6);
     const x=p.displayX*PX_PER_M-off;
-    if(x>-100&&x<innerWidth+100){const laneValue=Number(p.lane),lane=Number.isFinite(laneValue)?Math.max(0,Math.min(1,laneValue)):.5,baseline=baselineFor(lane),scale=depthScale(lane);foreground.push({y:baseline,draw:()=>{drawPerson(ctx,x,baseline,scale,{...p,dir:p.dir||1},p.velocity/3.2,p.stride,remoteEnergy);drawNameLabel(ctx,x,baseline,scale,p.name,p.nameColor,p.zomriBag);}});}
+    if(x>-100&&x<innerWidth+100){const laneValue=Number(p.lane),lane=Number.isFinite(laneValue)?Math.max(0,Math.min(1,laneValue)):.5,baseline=baselineFor(lane),scale=depthScale(lane),companionX=p.civavaCompanion?companionWorldX(p,p.displayX,dt)*PX_PER_M-off:x;foreground.push({y:baseline,draw:()=>{drawCivavaCompanion(ctx,companionX,baseline,scale,p,p.stride,remoteEnergy,wallNow);drawPerson(ctx,x,baseline,scale,{...p,dir:p.dir||1},p.velocity/3.2,p.stride,remoteEnergy);drawNameLabel(ctx,x,baseline,scale,p.name,p.nameColor,p.zomriBag);}});}
   });
   foreground.sort((a,b)=>a.y-b.y).forEach(entry=>entry.draw());
   drawNightShade(ctx,state.nightMix);
@@ -958,23 +1003,32 @@ async function loadWorld(){
   try{const r=await fetch('/api/graffiti',{headers:{'X-Writer-Id':visitorId}});if(!r.ok)throw 0;const data=await r.json();state.mode='shared';state.graffiti=data.items;state.hasWritten=WRITE_LIMIT_ENABLED&&Boolean(data.hasWritten);if(state.hasWritten)storeValue(WRITTEN_KEY,'1');else removeStoredValue(WRITTEN_KEY);if(!state.hasWritten)$('#editorNote').textContent=WRITE_LIMIT_ENABLED?'Máš jeden odkaz. Po uložení ho uvidia aj ďalší návštevníci.':'DEV režim: odkazy môžeš pridávať bez obmedzenia.';}catch{}finally{updateWriteAccess();}
 }
 loadWorld();
-async function loadZomriBagVersion(){try{const r=await fetch('/api/presence');if(!r.ok)return;const data=await r.json();applyZomriBagVersion(data.zomriBagVersion);}catch{}}
-loadZomriBagVersion();
+async function loadRewardVersions(){try{const r=await fetch('/api/presence');if(!r.ok)return;const data=await r.json();applyZomriBagVersion(data.zomriBagVersion);applyCivavaCompanionVersion(data.civavaCompanionVersion);}catch{}}
+loadRewardVersions();
 function applyZomriBagVersion(value) {
   const version=String(value||'1').trim().slice(0,32)||'1';
   state.globalZomriBagVersion=version;
   if(state.zomriBag&&state.zomriBagVersion!==version){state.zomriBag=false;removeStoredValue(SEGEDIN_BAG_KEY);state.zomriBagVersion=version;storeValue(SEGEDIN_BAG_VERSION_KEY,version);drawAvatar();toast('ZOMRI tašky boli globálne resetované.');}
   else if(!state.zomriBag&&state.zomriBagVersion!==version){state.zomriBagVersion=version;storeValue(SEGEDIN_BAG_VERSION_KEY,version);}
 }
-function receivePresence(players,{replace=false,zomriBagVersion}={}){
+function applyCivavaCompanionVersion(value) {
+  const version=String(value||'1').trim().slice(0,32)||'1',hadCompanion=state.civavaCompanionUnlocked;
+  state.globalCivavaCompanionVersion=version;
+  if(state.civavaCompanionVersion===version)return;
+  state.civavaCompanionUnlocked=false;state.civavaCompanion=false;state.companionX=null;state.civavaCompanionVersion=version;
+  removeStoredValue(CIVAVA_COMPANION_KEY);removeStoredValue(CIVAVA_COMPANION_ENABLED_KEY);storeValue(CIVAVA_COMPANION_VERSION_KEY,version);updateCompanionControl();
+  if(hadCompanion)toast('Companion Čivavy boli globálne resetované.');
+}
+function receivePresence(players,{replace=false,zomriBagVersion,civavaCompanionVersion}={}){
   if(zomriBagVersion)applyZomriBagVersion(zomriBagVersion);
+  if(civavaCompanionVersion)applyCivavaCompanionVersion(civavaCompanionVersion);
   const receivedAt=performance.now(),current=new Map(state.others.map(player=>[player.id,player])),incoming=new Set();
   (Array.isArray(players)?players:[]).forEach(packet=>{
     const id=String(packet?.id||'');if(!id||id===uid)return;incoming.add(id);
     const previous=current.get(id),packetTime=Number(packet.t)||Date.now();
     if(previous&&packetTime<previous.packetTime)return;
     const targetX=Math.max(0,Math.min(700,Number(packet.x)||0));
-    current.set(id,{...packet,id,zomriBag:packet.zomriBag===true&&String(packet.zomriBagVersion||'1')===state.globalZomriBagVersion,targetX,displayX:Number.isFinite(previous?.displayX)?previous.displayX:targetX,velocity:Math.max(-60,Math.min(60,Number(packet.velocity)||0)),running:packet.running===true,packetTime,receivedAt,stride:previous?.stride||0});
+    current.set(id,{...packet,id,zomriBag:packet.zomriBag===true&&String(packet.zomriBagVersion||'1')===state.globalZomriBagVersion,civavaCompanion:packet.civavaCompanion===true&&String(packet.civavaCompanionVersion||'1')===state.globalCivavaCompanionVersion,targetX,displayX:Number.isFinite(previous?.displayX)?previous.displayX:targetX,companionX:Number.isFinite(previous?.companionX)?previous.companionX:null,velocity:Math.max(-60,Math.min(60,Number(packet.velocity)||0)),running:packet.running===true,packetTime,receivedAt,stride:previous?.stride||0});
   });
   if(replace)for(const id of current.keys())if(!incoming.has(id))current.delete(id);
   state.others=[...current.values()].filter(player=>receivedAt-player.receivedAt<16000);
@@ -991,9 +1045,9 @@ setInterval(async()=>{
   if(!state.started)return;
   if(state.minigame){if(!state.presenceIdle){state.presenceIdle=true;announcePresenceLeave();}return;}
   if(Date.now()-state.lastPlayerMovementAt>=PRESENCE_IDLE_MS){if(!state.presenceIdle){state.presenceIdle=true;state.velocity=0;state.running=false;announcePresenceLeave();}return;}
-  const me={id:uid,x:state.x,lane:state.lane,skin:state.skin,name:state.name,nameColor:state.nameColor,zomriBag:state.zomriBag,zomriBagVersion:state.zomriBagVersion,dir:state.dir,velocity:state.velocity,running:state.running,t:Date.now()};
+  const me={id:uid,x:state.x,lane:state.lane,skin:state.skin,name:state.name,nameColor:state.nameColor,zomriBag:state.zomriBag,zomriBagVersion:state.zomriBagVersion,civavaCompanion:state.civavaCompanion,civavaCompanionVersion:state.civavaCompanionVersion,dir:state.dir,velocity:state.velocity,running:state.running,t:Date.now()};
   channel?.postMessage({type:'presence',players:[me]});
-  if(state.mode==='shared'&&!presenceRequestPending){presenceRequestPending=true;try{const r=await fetch('/api/presence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(me)});if(r.ok){const data=await r.json();receivePresence(data.players,{replace:true,zomriBagVersion:data.zomriBagVersion});}}catch{}finally{presenceRequestPending=false;}}
+  if(state.mode==='shared'&&!presenceRequestPending){presenceRequestPending=true;try{const r=await fetch('/api/presence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(me)});if(r.ok){const data=await r.json();receivePresence(data.players,{replace:true,zomriBagVersion:data.zomriBagVersion,civavaCompanionVersion:data.civavaCompanionVersion});}}catch{}finally{presenceRequestPending=false;}}
 },1000);
 
 $('#characterForm').addEventListener('change',e=>{if(e.target.name==='skin')state.skin=e.target.value;drawAvatar();});
@@ -1011,6 +1065,11 @@ document.querySelectorAll('[data-zoom]').forEach(button=>button.addEventListener
 setZoom(state.targetZoom);
 const desktopZoom=$('.desktop-zoom'),desktopZoomToggle=$('.desktop-zoom-toggle');
 const mobileUiToggle=$('#mobileUiToggle');
+const companionToggle=$('#companionToggle');
+function updateCompanionControl(){const unlocked=state.civavaCompanionUnlocked===true,enabled=unlocked&&state.civavaCompanion===true;companionToggle.hidden=!unlocked;companionToggle.setAttribute('aria-pressed',String(enabled));companionToggle.setAttribute('aria-label',enabled?'Vypnúť companion Čivavu':'Zapnúť companion Čivavu');companionToggle.title=enabled?'Vypnúť companion Čivavu':'Zapnúť companion Čivavu';}
+function setCompanionEnabled(enabled){if(!state.civavaCompanionUnlocked)return;state.civavaCompanion=Boolean(enabled);state.companionX=null;storeValue(CIVAVA_COMPANION_ENABLED_KEY,state.civavaCompanion?'1':'0');updateCompanionControl();toast(state.civavaCompanion?'Angry Čivava ťa znovu sprevádza.':'Angry Čivava zostáva odomknutá, ale je skrytá.');}
+companionToggle.addEventListener('click',()=>setCompanionEnabled(!state.civavaCompanion));
+updateCompanionControl();
 function setMobileUiHidden(hidden){document.documentElement.classList.toggle('mobile-ui-hidden',hidden);mobileUiToggle.setAttribute('aria-pressed',String(hidden));mobileUiToggle.setAttribute('aria-label',hidden?'Zobraziť rozhranie':'Skryť rozhranie');if(hidden){setAudioExpanded(false);setGraffitiIndex(false);}}
 mobileUiToggle.addEventListener('click',()=>setMobileUiHidden(!document.documentElement.classList.contains('mobile-ui-hidden')));
 function setDesktopZoomMode(active){desktopZoom.classList.toggle('active',active);document.documentElement.classList.toggle('desktop-zoom-mode',active);desktopZoomToggle.setAttribute('aria-expanded',String(active));desktopZoomToggle.setAttribute('aria-label',active?'Ukončiť zoom a čistý režim':'Otvoriť zoom a čistý režim');if(active)setGraffitiIndex(false);}
