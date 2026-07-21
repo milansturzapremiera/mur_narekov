@@ -10,6 +10,7 @@ const GRAVITY = 650;
 const BEST_KEY = 'mur:civava-best';
 const DOG_SRC = '/assets/scene/1784366828126-pes.webp';
 const BRICK_SRC = '/assets/wall/brick-wall-segment.webp';
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const LEVELS = [
   {
     name: 'Základná nominácia', shots: 3,
@@ -107,13 +108,13 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
 
   function makeLevel() {
     const level = LEVELS[levelIndex];
-    blocks = level.blocks.map(([x,y,w,h,label],index) => ({ x,y,w,h,label,hp:1,id:index,dead:false,shake:0 }));
+    blocks = level.blocks.map(([x,y,w,h,label],index) => ({ x,y,w,h,label,hp:1,id:index,dead:false,broken:false,shake:0,vx:0,vy:0,angle:0,angularVelocity:0,rest:0,unstableIn:null }));
     targets = level.targets.map(([x,y,r]) => ({ x,y,r,dead:false }));
     particles = [];
   }
 
   function resetProjectile() {
-    projectile = { x: SLING.x, y: SLING.y, vx: 0, vy: 0, r: 27, flying: false, rest: 0, age: 0, angle: 0 };
+    projectile = { x: SLING.x, y: SLING.y, vx: 0, vy: 0, r: 27, flying: false, rest: 0, age: 0, angle: 0, angularVelocity: 0, tumble: 0, impact: 0, launchStretch: 0 };
     status.textContent = 'Potiahni čivavu doľava, namier a pusti.';
   }
 
@@ -150,6 +151,8 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     projectile.vx = pullX * LAUNCH_X;
     projectile.vy = pullY * LAUNCH_Y;
     projectile.flying = true;
+    projectile.angularVelocity = reducedMotion.matches ? 0 : 1.15;
+    projectile.launchStretch = reducedMotion.matches ? 0 : 1;
     projectile.x += 4;
     projectile.age = 0;
     shots -= 1;
@@ -164,25 +167,47 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     }
   }
 
+  function scheduleCollapseAbove(block,delay=.1,seen=new Set()) {
+    if(seen.has(block.id))return;seen.add(block.id);
+    const supportTop=block.y-block.h/2;
+    blocks.forEach(candidate=>{
+      if(candidate.dead||candidate.broken||seen.has(candidate.id))return;
+      const candidateBottom=candidate.y+candidate.h/2,horizontalOverlap=Math.min(block.x+block.w/2,candidate.x+candidate.w/2)-Math.max(block.x-block.w/2,candidate.x-candidate.w/2);
+      if(Math.abs(candidateBottom-supportTop)>18||horizontalOverlap<Math.min(24,candidate.w*.24))return;
+      candidate.unstableIn=Math.min(Number.isFinite(candidate.unstableIn)?candidate.unstableIn:Infinity,delay);
+      scheduleCollapseAbove(candidate,delay+.09,seen);
+    });
+  }
+
+  function loosenBlock(block) {
+    if(block.dead||block.broken)return;
+    const motionScale=reducedMotion.matches ? .28 : 1;block.broken=true;block.unstableIn=null;block.vx=((Math.random()-.5)*80)*motionScale;block.vy=(-20-Math.random()*45)*motionScale;block.angularVelocity=reducedMotion.matches?0:(Math.random()-.5)*2.8;
+    burst(block.x,block.y,'#a84b32',6);
+  }
+
   function destroyBlock(block) {
-    if (block.dead) return;
-    block.dead = true; score += 120; burst(block.x, block.y, '#ffd500', 14);
+    if (block.dead || block.broken) return;
+    const motionScale=reducedMotion.matches ? .22 : 1,side=Math.sign(projectile.vx||1);
+    block.broken=true;block.shake=0;block.vx=(projectile.vx*.34+side*(45+Math.random()*75))*motionScale;block.vy=(projectile.vy*.24-80-Math.random()*90)*motionScale;
+    block.angularVelocity=(reducedMotion.matches?0:clamp((projectile.y-block.y)*projectile.vx*.00022+(Math.random()-.5)*4.2,-6,6));
+    score += 120; burst(block.x, block.y, '#a84b32', 16);
     targets.forEach(target => { if (!target.dead && Math.hypot(target.x - block.x, target.y - block.y) < 82) destroyTarget(target); });
+    scheduleCollapseAbove(block);status.textContent='Zásah. Statika sa vzdala.';updateHud();
   }
 
   function destroyTarget(target) {
     if (target.dead) return;
-    target.dead = true; score += 500; burst(target.x, target.y, '#f4efe5', 18);
+    target.dead = true; score += 500; burst(target.x, target.y, '#f4efe5', 18);updateHud();
   }
 
   function collideProjectile() {
     const speed = Math.hypot(projectile.vx, projectile.vy);
     targets.forEach(target => {
       if (target.dead || distance(projectile, target) > projectile.r + target.r) return;
-      destroyTarget(target); projectile.vx *= .72; projectile.vy -= 80;
+      destroyTarget(target);projectile.vx*=.72;projectile.vy-=80;projectile.impact=1;projectile.tumble=reducedMotion.matches?0:.65;projectile.angularVelocity+=reducedMotion.matches?0:3.2;
     });
     blocks.forEach(block => {
-      if (block.dead) return;
+      if (block.dead || block.broken) return;
       const left = block.x - block.w / 2, right = block.x + block.w / 2, top = block.y - block.h / 2, bottom = block.y + block.h / 2;
       const nearestX = clamp(projectile.x, left, right), nearestY = clamp(projectile.y, top, bottom);
       const dx = projectile.x - nearestX, dy = projectile.y - nearestY;
@@ -190,10 +215,11 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
       block.shake = .22;
       if (speed > 245) {
         destroyBlock(block);
-        projectile.vx *= .78; projectile.vy *= .9;
+        projectile.vx*=.78;projectile.vy=projectile.vy*.82-45;projectile.impact=1;projectile.tumble=reducedMotion.matches?0:.78;projectile.angularVelocity+=reducedMotion.matches?0:clamp(speed/150,2,5);
         projectile.x += Math.sign(projectile.vx || 1) * 10;
         return;
       }
+      projectile.impact=1;projectile.tumble=reducedMotion.matches?0:.4;projectile.angularVelocity+=reducedMotion.matches?0:1.8;
       if (Math.abs(dx) > Math.abs(dy)) projectile.vx *= -.42;
       else projectile.vy *= -.42;
       projectile.x += Math.sign(dx || projectile.vx) * 5;
@@ -211,10 +237,10 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     if (phase !== 'playing') return;
     score += 500 + levelIndex * 250 + shots * 300;
     if (levelIndex === LEVELS.length - 1) {
-      completedRun = true; phase = 'ending'; resultTimer = 1;
+      completedRun = true; phase = 'ending'; resultTimer = 1.3;
       status.textContent = 'Systém padol. Vyhodnocujem škody.';
     } else {
-      phase = 'level-clear'; resultTimer = 1.15;
+      phase = 'level-clear'; resultTimer = 1.45;
       status.textContent = `Level ${levelIndex + 1} hotový · pripravujem ďalší.`;
     }
     updateHud();
@@ -245,20 +271,38 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   }
 
   function update(dt) {
-    blocks.forEach(block => { block.shake = Math.max(0, block.shake - dt); });
+    blocks.forEach(block => {
+      block.shake=Math.max(0,block.shake-dt);
+      if(!block.broken&&Number.isFinite(block.unstableIn)){block.unstableIn-=dt;if(block.unstableIn<=0)loosenBlock(block);}
+      if(!block.broken||block.dead)return;
+      block.vy+=GRAVITY*.92*dt;block.x+=block.vx*dt;block.y+=block.vy*dt;block.angle+=block.angularVelocity*dt;
+      const halfHeight=Math.abs(Math.cos(block.angle))*block.h/2+Math.abs(Math.sin(block.angle))*block.w/2;
+      if(block.y+halfHeight>=GROUND){
+        block.y=GROUND-halfHeight;
+        if(block.vy>28){block.vy*=-.24;block.vx*=.76;block.angularVelocity*=.68;}
+        else{block.vy=0;block.vx*=Math.exp(-5*dt);block.angularVelocity*=Math.exp(-6*dt);}
+        block.rest+=dt;
+      }else block.rest=0;
+      if(Math.abs(block.vx)<2)block.vx=0;if(Math.abs(block.angularVelocity)<.035)block.angularVelocity=0;
+    });
     particles.forEach(particle => { particle.vy += 620 * dt; particle.x += particle.vx * dt; particle.y += particle.vy * dt; particle.life -= dt; });
     particles = particles.filter(particle => particle.life > 0);
     if (phase === 'level-clear') { resultTimer -= dt; if (resultTimer <= 0) advanceLevel(); }
     if (phase === 'ending') { resultTimer -= dt; if (resultTimer <= 0) showResult(); }
     if (phase !== 'playing' || !projectile.flying) return;
     projectile.age += dt;
+    projectile.impact=Math.max(0,projectile.impact-dt*4.8);projectile.launchStretch=Math.max(0,projectile.launchStretch-dt*3.6);projectile.tumble=Math.max(0,projectile.tumble-dt);
     projectile.vy += GRAVITY * dt;
     projectile.x += projectile.vx * dt;
     projectile.y += projectile.vy * dt;
-    projectile.angle = Math.atan2(projectile.vy, projectile.vx);
+    const flightAngle=clamp(Math.atan2(projectile.vy,Math.max(80,Math.abs(projectile.vx)))*.34,-.48,.58);
+    if(projectile.tumble>0)projectile.angle+=projectile.angularVelocity*dt;
+    else{const angleDelta=Math.atan2(Math.sin(flightAngle-projectile.angle),Math.cos(flightAngle-projectile.angle));projectile.angle+=angleDelta*(1-Math.exp(-4.2*dt));}
+    projectile.angularVelocity*=Math.exp(-.55*dt);
     collideProjectile();
     if (projectile.y + projectile.r > GROUND) {
       projectile.y = GROUND - projectile.r;
+      if(projectile.vy>55){projectile.impact=1;projectile.tumble=reducedMotion.matches?0:.55;projectile.angularVelocity+=(reducedMotion.matches?0:2.1)*Math.sign(projectile.vx||1);}
       projectile.vy *= -.28; projectile.vx *= .78;
       if (Math.abs(projectile.vy) < 32) projectile.vy = 0;
     }
@@ -279,9 +323,10 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   }
 
   function drawDog() {
-    context.save(); context.translate(projectile.x, projectile.y); context.rotate(projectile.flying ? projectile.angle : 0);
+    context.save();context.translate(projectile.x,projectile.y);context.rotate(projectile.flying?projectile.angle:0);
+    const scaleX=1+projectile.launchStretch*.08+projectile.impact*.2,scaleY=1-projectile.launchStretch*.05-projectile.impact*.2;context.scale(scaleX,scaleY);
     if (dog.complete && dog.naturalWidth) {
-      const frameWidth = dog.naturalWidth / 5, frame = projectile.flying ? Math.floor(projectile.age * 10) % 5 : 0;
+      const frameWidth = dog.naturalWidth / 5, frame = projectile.flying ? 2 : 0;
       const width = projectile.flying ? 76 : 68, height = projectile.flying ? 84 : 75;
       context.drawImage(dog, frame * frameWidth, 0, frameWidth, dog.naturalHeight, -width/2, -height/2, width, height);
     } else {
@@ -326,7 +371,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     blocks.forEach(block => {
       if (block.dead) return;
       const shake = block.shake ? Math.sin(now * .09) * 5 : 0;
-      context.save();context.translate(block.x+shake,block.y);drawBrickBlock(block);context.restore();
+      context.save();context.translate(block.x+shake,block.y);context.rotate(block.angle||0);drawBrickBlock(block);context.restore();
     });
     targets.forEach((target, index) => {
       if (target.dead) return;
