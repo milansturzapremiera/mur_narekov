@@ -262,7 +262,7 @@ export function mountSceneEditor(api) {
     <form class="dev-interaction-properties" hidden>
       <div class="dev-detail-head"><button type="button" data-action="back-to-interactions">← Späť na interakcie</button><strong data-interaction-detail-name></strong></div>
       <label>Názov<input name="name" maxlength="60"></label>
-      <label>Minihra<select name="game"><option value="segedin">01 · Segedínový algoritmus</option><option value="civava">02 · Čivava na odstrel</option></select></label>
+      <label>Minihra<select name="game"><option value="segedin">01 · Segedínový algoritmus</option><option value="civava">02 · Angry Čivava</option></select></label>
       <div class="dev-scene-pair"><label>Meter X<input name="x" type="number" min="0" max="700" step="0.05"></label><label>Poloha Y<input name="y" type="number" min="-3" max="5" step="0.01"></label></div>
       <label>Aktivačný dosah <output data-interaction-output="radiusM"></output><input name="radiusM" type="range" min="0.5" max="20" step="0.1"></label>
       <label class="dev-animation-toggle"><input name="enabled" type="checkbox"><span>Interakcia je aktívna</span></label>

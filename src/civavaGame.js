@@ -45,12 +45,12 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {}) {
   const host = document.createElement('div');
   host.innerHTML = `
-    <button class="civava-prompt" type="button" hidden aria-label="Spustiť minihru Čivava na odstrel" aria-haspopup="dialog" aria-controls="civavaGame"></button>
+    <button class="civava-prompt" type="button" hidden aria-label="Spustiť minihru Angry Čivava" aria-haspopup="dialog" aria-controls="civavaGame"></button>
     <button class="civava-mobile-action" type="button" hidden aria-haspopup="dialog" aria-controls="civavaGame">Hrať</button>
     <dialog class="civava-game" id="civavaGame" aria-labelledby="civavaTitle">
       <div class="civava-shell">
         <header class="civava-topbar">
-          <div><span>MINIHRA Č. 02 · LEVEL <b data-level>1/5</b></span><strong id="civavaTitle">Čivava na odstrel</strong></div>
+          <div><span>MINIHRA Č. 02 · LEVEL <b data-level>1/5</b></span><strong id="civavaTitle">Angry Čivava</strong></div>
           <dl><div><dt>Čivavy</dt><dd data-shots>3</dd></div><div><dt>Skóre</dt><dd data-score>0</dd></div></dl>
           <button class="civava-close" type="button" aria-label="Späť k múru">×</button>
         </header>
