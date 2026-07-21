@@ -20,22 +20,56 @@ const LEVELS = [
   {
     name: 'Trojkoalícia', shots: 3,
     blocks: [[650,426,44,120,'SĽUB'],[760,426,44,120,'DOHODA'],[870,426,44,120,'POST'],[760,350,270,32,'KOALÍCIA'],[700,285,44,98,'KRESLO'],[820,285,44,98,'KRESLO'],[760,222,190,30,'PROGRAM']],
-    targets: [[705,420,26],[815,420,26],[760,307,24],[760,185,24]]
+    targets: [[705,420,26],[815,420,26],[760,307,24],[760,185,24]],
+    barrels: [[930,456,24]]
   },
   {
     name: 'Pyramída funkcií', shots: 4,
     blocks: [[680,449,125,28,'ÚRAD'],[820,449,125,28,'ÚRAD'],[750,392,46,86,'FUNKCIA'],[750,337,270,30,'SCHÉMA'],[695,280,44,84,'FLEK'],[805,280,44,84,'FLEK'],[750,225,190,28,'RODINA']],
-    targets: [[680,405,25],[820,405,25],[750,290,24],[750,188,24]]
+    targets: [[680,405,25],[820,405,25],[750,290,24],[750,188,24]],
+    barrels: [[900,456,24]]
   },
   {
     name: 'Rezortná pevnosť', shots: 4,
     blocks: [[640,421,48,130,'REZORT'],[735,421,48,130,'ZMLUVA'],[830,421,48,130,'TENDER'],[925,421,48,130,'FIRMA'],[782,342,330,34,'ROZPOČET'],[700,274,46,102,'DOZOR'],[865,274,46,102,'DOZOR'],[782,212,230,30,'NOMINANT']],
-    targets: [[687,420,25],[782,420,25],[877,420,25],[782,295,24],[782,175,24]]
+    targets: [[687,420,25],[782,420,25],[877,420,25],[782,295,24],[782,175,24]],
+    barrels: [[600,456,24],[965,456,24]]
   },
   {
     name: 'Nedobytný systém', shots: 5,
     blocks: [[620,428,44,116,'MY'],[700,428,44,116,'NAŠI'],[780,428,44,116,'ĽUDIA'],[860,428,44,116,'FLEKY'],[940,428,44,116,'ISTOTA'],[780,354,360,32,'SYSTÉM'],[660,290,44,96,'KŠEFT'],[780,290,44,96,'KŠEFT'],[900,290,44,96,'KŠEFT'],[780,228,300,30,'BEZ TRESTU'],[720,265,42,74,'POST'],[840,265,42,74,'POST']],
-    targets: [[660,420,25],[740,420,25],[820,420,25],[900,420,25],[720,304,24],[840,304,24],[780,180,24]]
+    targets: [[660,420,25],[740,420,25],[820,420,25],[900,420,25],[720,304,24],[840,304,24],[780,180,24]],
+    barrels: [[580,456,24],[980,456,24]]
+  },
+  {
+    name: 'Tichá privatizácia', shots: 4,
+    blocks: [[620,438,52,96,'PODPIS'],[710,438,52,96,'PEČIATKA'],[800,438,52,96,'KÚPNA'],[890,438,52,96,'ZMLUVA'],[755,370,330,34,'ŠTÁTNY MAJETOK'],[675,300,48,106,'ZA EURO'],[835,300,48,106,'ZA EURO'],[755,230,250,32,'TAJNÉ']],
+    targets: [[665,433,25],[755,433,25],[845,433,25],[755,318,25],[755,192,25]],
+    barrels: [[955,456,24]]
+  },
+  {
+    name: 'Rodinný podnik', shots: 4,
+    blocks: [[635,432,54,108,'SVOKOR'],[725,432,54,108,'SYN'],[815,432,54,108,'KMOTOR'],[905,432,54,108,'BRAT'],[770,356,340,34,'VÝBEROVÁ KOMISIA'],[690,286,46,104,'RODINA'],[850,286,46,104,'RODINA'],[770,218,248,30,'VÍŤAZ']],
+    targets: [[680,426,25],[770,426,25],[860,426,25],[770,302,25],[770,180,25]],
+    barrels: [[590,456,24],[950,456,24]]
+  },
+  {
+    name: 'Výberové konanie', shots: 5,
+    blocks: [[610,430,42,112,'1%'],[680,430,42,112,'5%'],[750,430,42,112,'10%'],[820,430,42,112,'20%'],[890,430,42,112,'VÍŤAZ'],[750,354,330,32,'NAJLEPŠIA PONUKA'],[650,288,44,100,'BOD'],[750,288,44,100,'BOD'],[850,288,44,100,'BOD'],[750,224,280,30,'KRITÉRIÁ']],
+    targets: [[645,424,24],[715,424,24],[785,424,24],[855,424,24],[700,305,24],[800,305,24],[750,186,25]],
+    barrels: [[950,456,24]]
+  },
+  {
+    name: 'Betónová istota', shots: 5,
+    blocks: [[590,420,48,132,'PILIER'],[670,420,48,132,'PILIER'],[750,420,48,132,'PILIER'],[830,420,48,132,'PILIER'],[910,420,48,132,'PILIER'],[750,338,390,34,'ISTOTA'],[635,270,48,104,'DOŽIVOTNE'],[750,270,48,104,'DOŽIVOTNE'],[865,270,48,104,'DOŽIVOTNE'],[750,202,330,30,'NEODVOLATEĽNÍ']],
+    targets: [[630,414,25],[710,414,25],[790,414,25],[870,414,25],[692,287,24],[808,287,24],[750,164,25]],
+    barrels: [[550,456,24],[950,456,24]]
+  },
+  {
+    name: 'Večný systém', shots: 6,
+    blocks: [[570,430,42,112,'POST'],[635,430,42,112,'FLEK'],[700,430,42,112,'KŠEFT'],[765,430,42,112,'FIRMA'],[830,430,42,112,'TENDER'],[895,430,42,112,'ISTOTA'],[960,430,42,112,'MY'],[765,354,420,34,'SYSTÉM'],[620,286,44,102,'NAŠI'],[715,286,44,102,'NAŠI'],[815,286,44,102,'NAŠI'],[910,286,44,102,'NAŠI'],[765,218,360,32,'BEZ NÁS TO NEJDE'],[680,164,46,82,'ŠÉF'],[850,164,46,82,'ŠÉF'],[765,108,250,30,'VEČNÁ FUNKCIA']],
+    targets: [[610,424,24],[675,424,24],[740,424,24],[805,424,24],[870,424,24],[665,303,24],[765,303,24],[865,303,24],[720,178,24],[810,178,24],[765,70,25]],
+    barrels: [[535,456,24],[990,456,24],[765,324,22]]
   }
 ];
 
@@ -50,7 +84,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     <dialog class="civava-game" id="civavaGame" aria-labelledby="civavaTitle">
       <div class="civava-shell">
         <header class="civava-topbar">
-          <div><span>MINIHRA Č. 02 · LEVEL <b data-level>1/5</b></span><strong id="civavaTitle">Angry Čivava</strong></div>
+          <div><span>MINIHRA Č. 02 · LEVEL <b data-level>1/10</b></span><strong id="civavaTitle">Angry Čivava</strong></div>
           <dl><div><dt>Čivavy</dt><dd data-shots>3</dd></div><div><dt>Skóre</dt><dd data-score>0</dd></div></dl>
           <button class="civava-close" type="button" aria-label="Späť k múru">×</button>
         </header>
@@ -61,8 +95,8 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
         <section class="civava-cover civava-intro">
           <span>ODBOR BALISTICKEJ KYNOLÓGIE</span>
           <h2>Odisti čivavu.</h2>
-          <p>Potiahni ju doľava od praku, namier a pusti. Prebi sa cez päť úrovní papalášskych konštrukcií.</p>
-          <div class="civava-how"><b>1</b><span>Potiahni</span><b>2</b><span>Namier</span><b>3</b><span>Pusti</span></div>
+          <p>Zhoď všetkých papalášov v desiatich konštrukciách. Počas letu ťukni do plochy alebo stlač medzerník — čivava raz za výstrel štekne a tlakovou vlnou odpáli okolie.</p>
+          <div class="civava-how"><b>1</b><span>Potiahni</span><b>2</b><span>Namier</span><b>3</b><span>Pusti</span><b>4</b><span>Štekni</span></div>
           <button class="civava-start" type="button">Nabiť čivavu</button>
         </section>
         <section class="civava-cover civava-result" hidden>
@@ -104,24 +138,28 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   let projectile;
   let blocks = [];
   let targets = [];
+  let barrels = [];
   let particles = [];
+  let shockwaves = [];
 
   function makeLevel() {
     const level = LEVELS[levelIndex];
     blocks = level.blocks.map(([x,y,w,h,label],index) => ({ x,y,w,h,label,hp:1,id:index,dead:false,broken:false,shake:0,vx:0,vy:0,angle:0,angularVelocity:0,rest:0,unstableIn:null }));
     targets = level.targets.map(([x,y,r]) => ({ x,y,r,dead:false }));
+    barrels = (level.barrels || []).map(([x,y,r=24],index) => ({ x,y,r,id:index,dead:false,flash:0 }));
     particles = [];
+    shockwaves = [];
   }
 
   function resetProjectile() {
-    projectile = { x: SLING.x, y: SLING.y, vx: 0, vy: 0, r: 27, flying: false, rest: 0, age: 0, angle: 0, angularVelocity: 0, tumble: 0, impact: 0, launchStretch: 0, direction: 1 };
-    status.textContent = 'Potiahni čivavu doľava, namier a pusti.';
+    projectile = { x: SLING.x, y: SLING.y, vx: 0, vy: 0, r: 27, flying: false, rest: 0, age: 0, angle: 0, angularVelocity: 0, tumble: 0, impact: 0, launchStretch: 0, direction: 1, barkUsed: false };
+    status.textContent = 'Potiahni čivavu, namier a počas letu raz štekni.';
   }
 
   function resetGame() {
     levelIndex = 0; shots = LEVELS[0].shots; score = 0; resultTimer = 0; completedRun = false; phase = 'playing';
     makeLevel(); resetProjectile(); updateHud();
-    status.textContent = `Level 1/5 · ${LEVELS[0].name}`;
+    status.textContent = `Level 1/${LEVELS.length} · ${LEVELS[0].name}`;
     intro.hidden = true; result.hidden = true;
   }
 
@@ -186,6 +224,51 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     burst(block.x,block.y,'#a84b32',6);targets.forEach(target=>{if(!target.dead&&Math.hypot(target.x-block.x,target.y-block.y)<82)destroyTarget(target);});
   }
 
+  function forceBlock(block, origin, strength = 1, points = 90) {
+    if (block.dead || block.broken) return;
+    const dx = block.x - origin.x, dy = block.y - origin.y, length = Math.hypot(dx, dy) || 1;
+    const motionScale = reducedMotion.matches ? .3 : 1, force = (180 + Math.random() * 110) * strength;
+    block.broken = true; block.unstableIn = null; block.shake = 0;
+    block.vx = dx / length * force * motionScale;
+    block.vy = (dy / length * force - 95) * motionScale;
+    block.angularVelocity = reducedMotion.matches ? 0 : (Math.random() - .5) * 5 * strength;
+    score += points; burst(block.x, block.y, '#a84b32', 12); scheduleCollapseAbove(block);
+  }
+
+  function detonateBarrel(barrel, chain = 0) {
+    if (barrel.dead) return;
+    barrel.dead = true;
+    const radius = 178;
+    score += 300 + chain * 100;
+    shockwaves.push({ x: barrel.x, y: barrel.y, radius: 12, max: radius, life: .55, color: '#f7d400' });
+    burst(barrel.x, barrel.y, '#171512', 20); burst(barrel.x, barrel.y, '#f7d400', 28);
+    blocks.forEach(block => {
+      const range = Math.hypot(block.x - barrel.x, block.y - barrel.y);
+      if (!block.dead && !block.broken && range < radius) forceBlock(block, barrel, 1.25 - range / radius * .45, 130 + chain * 20);
+    });
+    targets.forEach(target => { if (!target.dead && distance(target, barrel) < radius - 18) destroyTarget(target); });
+    barrels.forEach(other => { if (!other.dead && distance(other, barrel) < radius + 26) detonateBarrel(other, chain + 1); });
+    status.textContent = chain ? `Reťazová reakcia ×${chain + 1}.` : 'Výbuch. Verejné financie sa rozleteli.';
+    updateHud();
+  }
+
+  function activateBark() {
+    if (phase !== 'playing' || !projectile.flying || projectile.barkUsed) return false;
+    projectile.barkUsed = true;
+    const radius = 150, origin = { x: projectile.x, y: projectile.y };
+    shockwaves.push({ ...origin, radius: 8, max: radius, life: .5, color: '#f4efe5' });
+    burst(origin.x, origin.y, '#f4efe5', 18);
+    blocks.forEach(block => {
+      const range = distance(block, origin);
+      if (!block.dead && !block.broken && range < radius) forceBlock(block, origin, .95 - range / radius * .28, 90);
+    });
+    targets.forEach(target => { if (!target.dead && distance(target, origin) < radius - 28) destroyTarget(target); });
+    barrels.forEach(barrel => { if (!barrel.dead && distance(barrel, origin) < radius) detonateBarrel(barrel); });
+    projectile.vx *= 1.04; projectile.vy -= 42; projectile.impact = .65;
+    score += 50; status.textContent = 'HAV! Tlaková vlna odpálila okolie.'; updateHud();
+    return true;
+  }
+
   function destroyBlock(block) {
     if (block.dead || block.broken) return;
     const motionScale=reducedMotion.matches ? .22 : 1,side=Math.sign(projectile.vx||1);
@@ -202,10 +285,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   }
 
   function levelCleared() {
-    if(targets.every(target=>target.dead))return true;
-    if(!blocks.every(block=>block.dead||block.broken))return false;
-    targets.forEach(target=>{if(!target.dead)destroyTarget(target);});
-    return true;
+    return targets.length > 0 && targets.every(target => target.dead);
   }
 
   function collideProjectile() {
@@ -213,6 +293,10 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     targets.forEach(target => {
       if (target.dead || distance(projectile, target) > projectile.r + target.r) return;
       destroyTarget(target);projectile.vx*=.72;projectile.vy-=80;projectile.impact=1;projectile.tumble=reducedMotion.matches?0:.65;projectile.angularVelocity+=reducedMotion.matches?0:3.2;
+    });
+    barrels.forEach(barrel => {
+      if (barrel.dead || distance(projectile, barrel) > projectile.r + barrel.r) return;
+      detonateBarrel(barrel); projectile.vx *= .82; projectile.vy -= 65; projectile.impact = 1;
     });
     blocks.forEach(block => {
       if (block.dead || block.broken) return;
@@ -291,10 +375,18 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
         else{block.vy=0;block.vx*=Math.exp(-5*dt);block.angularVelocity*=Math.exp(-6*dt);}
         block.rest+=dt;
       }else block.rest=0;
+      const blockSpeed = Math.hypot(block.vx, block.vy);
+      if (blockSpeed > 70) {
+        const collisionRadius = Math.min(74, Math.max(block.w, block.h) * .48);
+        targets.forEach(target => { if (!target.dead && distance(block, target) < collisionRadius + target.r) destroyTarget(target); });
+        barrels.forEach(barrel => { if (!barrel.dead && distance(block, barrel) < collisionRadius + barrel.r) detonateBarrel(barrel); });
+      }
       if(Math.abs(block.vx)<2)block.vx=0;if(Math.abs(block.angularVelocity)<.035)block.angularVelocity=0;
     });
     particles.forEach(particle => { particle.vy += 620 * dt; particle.x += particle.vx * dt; particle.y += particle.vy * dt; particle.life -= dt; });
     particles = particles.filter(particle => particle.life > 0);
+    shockwaves.forEach(wave => { wave.radius += (wave.max - wave.radius) * Math.min(1, dt * 12); wave.life -= dt; });
+    shockwaves = shockwaves.filter(wave => wave.life > 0);
     if (phase === 'level-clear') { resultTimer -= dt; if (resultTimer <= 0) advanceLevel(); }
     if (phase === 'ending') { resultTimer -= dt; if (resultTimer <= 0) showResult(); }
     if(phase==='playing'&&levelCleared()){finishLevel();return;}
@@ -363,6 +455,42 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     context.fillStyle='#f4efe5';context.textAlign='center';context.textBaseline='middle';context.fillText(block.label,0,1,block.w-10);
   }
 
+  function drawBarrel(barrel, now) {
+    if (barrel.dead) return;
+    const pulse = reducedMotion.matches ? 0 : Math.sin(now * .008 + barrel.id) * 2;
+    context.save(); context.translate(barrel.x, barrel.y);
+    context.fillStyle = '#171512'; context.fillRect(-barrel.r, -barrel.r - 5, barrel.r * 2, barrel.r * 2 + 10);
+    context.fillStyle = '#f4efe5'; context.fillRect(-barrel.r + 4, -barrel.r + 1, barrel.r * 2 - 8, barrel.r * 2 - 2);
+    context.fillStyle = '#f7d400'; context.fillRect(-barrel.r + 4, -8, barrel.r * 2 - 8, 16);
+    context.strokeStyle = '#171512'; context.lineWidth = 4; context.strokeRect(-barrel.r, -barrel.r - 5, barrel.r * 2, barrel.r * 2 + 10);
+    context.fillStyle = '#171512'; context.font = `700 ${16 + pulse}px "Archivo Black",sans-serif`; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText('!', 0, 1);
+    context.restore();
+  }
+
+  function drawTarget(target, index) {
+    if (target.dead) return;
+    context.save(); context.translate(target.x, target.y);
+    context.fillStyle = '#171512'; context.beginPath(); context.arc(0, 0, target.r + 4, 0, Math.PI * 2); context.fill();
+    context.fillStyle = '#e6b48f'; context.beginPath(); context.arc(0, -3, target.r - 3, 0, Math.PI * 2); context.fill();
+    context.fillStyle = '#171512'; context.fillRect(-target.r + 4, target.r * .35, target.r * 2 - 8, target.r * .75);
+    context.fillStyle = '#f4efe5'; context.beginPath(); context.arc(-7, -5, 4, 0, Math.PI * 2); context.arc(7, -5, 4, 0, Math.PI * 2); context.fill();
+    context.fillStyle = '#171512'; context.beginPath(); context.arc(-6, -5, 2, 0, Math.PI * 2); context.arc(8, -5, 2, 0, Math.PI * 2); context.fill();
+    context.fillStyle = '#f7d400'; context.beginPath(); context.arc(target.r * .72, -target.r * .72, 11, 0, Math.PI * 2); context.fill();
+    context.fillStyle = '#171512'; context.font = '700 11px "Archivo Black",sans-serif'; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(String(index + 1), target.r * .72, -target.r * .72 + 1);
+    context.restore();
+  }
+
+  function drawAbility() {
+    if (phase !== 'playing') return;
+    const ready = projectile.flying && !projectile.barkUsed;
+    context.save(); context.translate(24, 22);
+    context.fillStyle = ready ? '#171512' : 'rgba(23,21,18,.72)'; context.fillRect(0, 0, 196, 42);
+    context.strokeStyle = ready ? '#f4efe5' : 'rgba(244,239,229,.55)'; context.lineWidth = 2; context.strokeRect(0, 0, 196, 42);
+    context.fillStyle = '#f7d400'; context.font = '700 12px "Archivo Black",sans-serif'; context.textAlign = 'left'; context.textBaseline = 'middle';
+    context.fillText(ready ? 'ŤUKNI / SPACE: ŠTEK' : projectile.barkUsed ? 'ŠTEK POUŽITÝ' : 'ŠTEK POČAS LETU', 13, 22);
+    context.restore();
+  }
+
   function draw(now) {
     context.clearRect(0, 0, WIDTH, HEIGHT);
     context.fillStyle = '#f7d400'; context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -382,13 +510,15 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
       const shake = block.shake ? Math.sin(now * .09) * 5 : 0;
       context.save();context.translate(block.x+shake,block.y);context.rotate(block.angle||0);drawBrickBlock(block);context.restore();
     });
-    targets.forEach((target, index) => {
-      if (target.dead) return;
-      context.fillStyle = '#171512'; context.beginPath(); context.arc(target.x,target.y,target.r,0,Math.PI*2); context.fill();
-      context.fillStyle = '#f7d400'; context.font = '700 24px "Archivo Black",sans-serif'; context.textAlign='center';context.textBaseline='middle';context.fillText(String(index+1),target.x,target.y+1);
+    barrels.forEach(barrel => drawBarrel(barrel, now));
+    targets.forEach(drawTarget);
+    shockwaves.forEach(wave => {
+      context.save(); context.globalAlpha = clamp(wave.life * 1.9, 0, 1); context.strokeStyle = wave.color; context.lineWidth = 9 * clamp(wave.life * 2, .25, 1);
+      context.beginPath(); context.arc(wave.x, wave.y, wave.radius, 0, Math.PI * 2); context.stroke(); context.restore();
     });
     particles.forEach(particle => { context.globalAlpha = clamp(particle.life * 1.8, 0, 1); context.fillStyle = particle.color; context.fillRect(particle.x, particle.y, particle.size, particle.size); }); context.globalAlpha = 1;
     drawDog();
+    drawAbility();
   }
 
   function loop(now) {
@@ -402,7 +532,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   function close() { if (dialog.open) dialog.close(); }
   function cleanup() { cancelAnimationFrame(animation); dragging=false; document.documentElement.classList.remove('civava-game-open'); prompt.hidden=!available; mobileAction.hidden=!available; onClose(); }
 
-  canvas.addEventListener('pointerdown', event => { if (phase!=='playing'||projectile.flying||distance(canvasPoint(event),projectile)>76)return;event.preventDefault();dragging=true;pointerId=event.pointerId;canvas.setPointerCapture(pointerId);aimAt(canvasPoint(event));status.textContent='Ťahaj doľava. Pusti a leť.'; });
+  canvas.addEventListener('pointerdown', event => { if (phase!=='playing')return;if(projectile.flying){event.preventDefault();activateBark();return;}if(distance(canvasPoint(event),projectile)>76)return;event.preventDefault();dragging=true;pointerId=event.pointerId;canvas.setPointerCapture(pointerId);aimAt(canvasPoint(event));status.textContent='Ťahaj doľava. Pusti a leť.'; });
   canvas.addEventListener('pointermove', event => { if(!dragging||event.pointerId!==pointerId)return;event.preventDefault();aimAt(canvasPoint(event)); });
   canvas.addEventListener('pointerup', event => { if(event.pointerId!==pointerId)return;release();if(canvas.hasPointerCapture?.(event.pointerId))canvas.releasePointerCapture(event.pointerId);pointerId=null; });
   canvas.addEventListener('pointercancel', () => { dragging=false;resetProjectile(); });
@@ -413,6 +543,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   dialog.querySelector('.civava-close').addEventListener('click',close);
   dialog.addEventListener('cancel',event=>{event.preventDefault();close();}); dialog.addEventListener('close',cleanup);
   window.addEventListener('keydown', event => {
+    if (dialog.open && phase === 'playing' && projectile.flying && (event.code === 'Space' || event.key === ' ')) { event.preventDefault(); activateBark(); return; }
     if (!available || dialog.open || event.repeat || event.key.toLowerCase() !== 'e' || event.target.matches?.('input,textarea,select')) return;
     event.preventDefault(); open();
   });
