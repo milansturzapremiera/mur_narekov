@@ -149,10 +149,11 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {}, onComp
     const rect=stage.getBoundingClientRect();
     if(rect.width<1||rect.height<1)return;
     const touchDevice=matchMedia('(pointer:coarse), (any-pointer:coarse)').matches;
-    const widePhone=touchDevice&&rect.width/rect.height>1.9;
-    const scale=widePhone?Math.min(rect.width*.92/WIDTH,rect.height/(HEIGHT-100)):Math.min(rect.width/WIDTH,rect.height/HEIGHT);
+    const widePhone=rect.width/rect.height>1.9&&(touchDevice||innerHeight<=560);
+    const scale=widePhone?Math.min(rect.width*.96/WIDTH,rect.height/(HEIGHT-120)):Math.min(rect.width/WIDTH,rect.height/HEIGHT);
     canvas.style.width=`${Math.max(1,Math.floor(WIDTH*scale))}px`;
     canvas.style.height=`${Math.max(1,Math.floor(HEIGHT*scale))}px`;
+    canvas.style.transform=widePhone?`translateY(${Math.round(rect.height*.018)}px)`:'';
   }
 
   function scheduleCanvasFit() {

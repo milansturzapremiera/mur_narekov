@@ -20,3 +20,6 @@
 @media(max-width:760px) and (orientation:portrait) and (pointer:coarse){
   .civava-rotate-hint{position:absolute;z-index:2;top:14px;left:50%;display:block;width:max-content;max-width:calc(100% - 28px);margin:0;padding:8px 11px;border:1px solid oklch(16% .012 88);background:oklch(96% .012 88 / .92);color:oklch(16% .012 88);font-size:.68rem;font-weight:800;letter-spacing:.06em;text-align:center;text-transform:uppercase;transform:translateX(-50%)}
 }
+@media(max-height:560px) and (orientation:landscape){
+  .civava-status{top:10px;bottom:auto;max-width:min(520px,42vw)}
+}
