@@ -114,7 +114,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   }
 
   function resetProjectile() {
-    projectile = { x: SLING.x, y: SLING.y, vx: 0, vy: 0, r: 27, flying: false, rest: 0, age: 0, angle: 0, angularVelocity: 0, tumble: 0, impact: 0, launchStretch: 0 };
+    projectile = { x: SLING.x, y: SLING.y, vx: 0, vy: 0, r: 27, flying: false, rest: 0, age: 0, angle: 0, angularVelocity: 0, tumble: 0, impact: 0, launchStretch: 0, direction: 1 };
     status.textContent = 'Potiahni čivavu doľava, namier a pusti.';
   }
 
@@ -150,6 +150,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     if (power < 14) return resetProjectile();
     projectile.vx = pullX * LAUNCH_X;
     projectile.vy = pullY * LAUNCH_Y;
+    projectile.direction = Math.sign(projectile.vx) || 1;
     projectile.flying = true;
     projectile.angularVelocity = reducedMotion.matches ? 0 : 1.15;
     projectile.launchStretch = reducedMotion.matches ? 0 : 1;
@@ -306,6 +307,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
       projectile.vy *= -.28; projectile.vx *= .78;
       if (Math.abs(projectile.vy) < 32) projectile.vy = 0;
     }
+    if(Math.abs(projectile.vx)>45)projectile.direction=Math.sign(projectile.vx);
     const slow = Math.hypot(projectile.vx, projectile.vy) < 34 && projectile.y + projectile.r >= GROUND - 2;
     projectile.rest = slow ? projectile.rest + dt : 0;
     if (targets.every(target => target.dead)) finishLevel();
@@ -324,7 +326,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
 
   function drawDog() {
     context.save();context.translate(projectile.x,projectile.y);context.rotate(projectile.flying?projectile.angle:0);
-    const scaleX=1+projectile.launchStretch*.08+projectile.impact*.2,scaleY=1-projectile.launchStretch*.05-projectile.impact*.2;context.scale(scaleX,scaleY);
+    const scaleX=1+projectile.launchStretch*.08+projectile.impact*.2,scaleY=1-projectile.launchStretch*.05-projectile.impact*.2,mirror=projectile.direction>=0?-1:1;context.scale(scaleX*mirror,scaleY);
     if (dog.complete && dog.naturalWidth) {
       const frameWidth = dog.naturalWidth / 5, frame = projectile.flying ? 2 : 0;
       const width = projectile.flying ? 76 : 68, height = projectile.flying ? 84 : 75;
