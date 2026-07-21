@@ -113,6 +113,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {}, onComp
   const prompt = host.querySelector('.civava-prompt');
   const mobileAction = host.querySelector('.civava-mobile-action');
   const dialog = host.querySelector('.civava-game');
+  const stage = host.querySelector('.civava-stage');
   const canvas = host.querySelector('canvas');
   const context = canvas.getContext('2d');
   const status = host.querySelector('.civava-status');
@@ -142,6 +143,20 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {}, onComp
   let barrels = [];
   let particles = [];
   let shockwaves = [];
+
+  function fitCanvasToStage() {
+    const rect=stage.getBoundingClientRect();
+    if(rect.width<1||rect.height<1)return;
+    const scale=Math.min(rect.width/WIDTH,rect.height/HEIGHT);
+    canvas.style.width=`${Math.max(1,Math.floor(WIDTH*scale))}px`;
+    canvas.style.height=`${Math.max(1,Math.floor(HEIGHT*scale))}px`;
+  }
+
+  function scheduleCanvasFit() {
+    requestAnimationFrame(()=>requestAnimationFrame(fitCanvasToStage));
+  }
+
+  new ResizeObserver(scheduleCanvasFit).observe(stage);
 
   function makeLevel() {
     const level = LEVELS[levelIndex];
@@ -531,20 +546,23 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {}, onComp
   }
 
   function startLoop() { cancelAnimationFrame(animation); previous = performance.now(); animation = requestAnimationFrame(loop); }
-  function open() { if (!available || dialog.open) return; levelIndex=0;shots=LEVELS[0].shots;score=0;completedRun=false;phase='intro';intro.hidden=false;result.hidden=true;makeLevel();resetProjectile();updateHud();document.documentElement.classList.add('civava-game-open');dialog.showModal();onOpen();startLoop();dialog.querySelector('.civava-start').focus(); }
+  function open() { if (!available || dialog.open) return; levelIndex=0;shots=LEVELS[0].shots;score=0;completedRun=false;phase='intro';intro.hidden=false;result.hidden=true;makeLevel();resetProjectile();updateHud();document.documentElement.classList.add('civava-game-open');dialog.showModal();scheduleCanvasFit();onOpen();startLoop();dialog.querySelector('.civava-start').focus(); }
   function close() { if (dialog.open) dialog.close(); }
-  function cleanup() { cancelAnimationFrame(animation); dragging=false; document.documentElement.classList.remove('civava-game-open'); prompt.hidden=!available; mobileAction.hidden=!available; onClose(); }
+  function releaseGamePointer(reset=false) { if(pointerId!==null&&canvas.hasPointerCapture?.(pointerId))canvas.releasePointerCapture(pointerId);pointerId=null;dragging=false;if(reset&&phase==='playing'&&!projectile.flying)resetProjectile(); }
+  function cleanup() { cancelAnimationFrame(animation); releaseGamePointer(); document.documentElement.classList.remove('civava-game-open'); prompt.hidden=!available; mobileAction.hidden=!available; onClose(); }
 
   canvas.addEventListener('pointerdown', event => { if (phase!=='playing')return;if(projectile.flying){event.preventDefault();activateBark();return;}if(distance(canvasPoint(event),projectile)>76)return;event.preventDefault();dragging=true;pointerId=event.pointerId;canvas.setPointerCapture(pointerId);aimAt(canvasPoint(event));status.textContent='Ťahaj doľava. Pusti a leť.'; });
   canvas.addEventListener('pointermove', event => { if(!dragging||event.pointerId!==pointerId)return;event.preventDefault();aimAt(canvasPoint(event)); });
   canvas.addEventListener('pointerup', event => { if(event.pointerId!==pointerId)return;release();if(canvas.hasPointerCapture?.(event.pointerId))canvas.releasePointerCapture(event.pointerId);pointerId=null; });
-  canvas.addEventListener('pointercancel', () => { dragging=false;resetProjectile(); });
+  canvas.addEventListener('pointercancel', () => { releaseGamePointer(true); });
   prompt.addEventListener('click',open); mobileAction.addEventListener('click',open);
   dialog.querySelector('.civava-start').addEventListener('click',resetGame);
   dialog.querySelector('.civava-replay').addEventListener('click',resetGame);
   dialog.querySelector('.civava-return').addEventListener('click',close);
   dialog.querySelector('.civava-close').addEventListener('click',close);
   dialog.addEventListener('cancel',event=>{event.preventDefault();close();}); dialog.addEventListener('close',cleanup);
+  window.addEventListener('orientationchange',()=>{releaseGamePointer(true);scheduleCanvasFit();});
+  window.visualViewport?.addEventListener('resize',scheduleCanvasFit);
   window.addEventListener('keydown', event => {
     if (dialog.open && phase === 'playing' && projectile.flying && (event.code === 'Space' || event.key === ' ')) { event.preventDefault(); activateBark(); return; }
     if (!available || dialog.open || event.repeat || event.key.toLowerCase() !== 'e' || event.target.matches?.('input,textarea,select')) return;

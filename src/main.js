@@ -211,6 +211,7 @@ const segedinGame = createSegedinGame({
   },
   onClose: () => {
     state.minigame=false;state.lastPlayerMovementAt=Date.now();state.presenceIdle=false;
+    scheduleViewportResize();
     if(state.started)canvas.focus();
   },
   onBagUnlocked: () => {
@@ -224,6 +225,7 @@ const civavaGame = createCivavaGame({
   },
   onClose: () => {
     state.minigame=false;state.lastPlayerMovementAt=Date.now();state.presenceIdle=false;
+    scheduleViewportResize();
     if(state.started)canvas.focus();
   },
   onCompanionUnlocked: () => {
@@ -378,7 +380,13 @@ function resize() {
   canvas.width=Math.round(innerWidth*dpr);canvas.height=Math.round(innerHeight*dpr);
   canvas.style.width=`${innerWidth}px`;canvas.style.height=`${innerHeight}px`;rebuildSkyPaint();
 }
-addEventListener('resize', resize); resize();
+let viewportResizeFrame=0,viewportResizeTimers=[];
+function scheduleViewportResize(){
+  cancelAnimationFrame(viewportResizeFrame);viewportResizeTimers.forEach(clearTimeout);viewportResizeTimers=[];
+  viewportResizeFrame=requestAnimationFrame(()=>requestAnimationFrame(resize));
+  viewportResizeTimers.push(setTimeout(resize,160),setTimeout(resize,420));
+}
+addEventListener('resize',scheduleViewportResize);window.visualViewport?.addEventListener('resize',scheduleViewportResize);resize();
 
 function sceneBands() {
   const lowWallHeight=Math.max(20,innerHeight*state.terrain.lowWallHeight);
@@ -1058,7 +1066,7 @@ addEventListener('blur',()=>{state.running=false;state.keys.clear();state.moving
 document.querySelectorAll('[data-move-x]').forEach(b=>{const end=()=>state.moving=0;b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);state.moving=Number(b.dataset.moveX)});b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);b.addEventListener('lostpointercapture',end);b.addEventListener('contextmenu',e=>e.preventDefault());b.addEventListener('selectstart',e=>e.preventDefault());b.addEventListener('dragstart',e=>e.preventDefault());});
 document.querySelectorAll('[data-run]').forEach(button=>{const set=value=>{state.running=value;button.setAttribute('aria-pressed',String(value));};button.addEventListener('pointerdown',e=>{e.preventDefault();button.setPointerCapture(e.pointerId);set(true)});button.addEventListener('pointerup',()=>set(false));button.addEventListener('pointercancel',()=>set(false));button.addEventListener('lostpointercapture',()=>set(false));});
 function releaseTouchInput(){state.moving=0;state.running=false;document.querySelectorAll('[data-run]').forEach(button=>button.setAttribute('aria-pressed','false'));}
-addEventListener('orientationchange',releaseTouchInput);
+addEventListener('orientationchange',()=>{releaseTouchInput();scheduleViewportResize();});
 mobileViewport.addEventListener?.('change',releaseTouchInput);
 function setZoom(value){state.targetZoom=Math.round(Math.max(1,Math.min(1.6,Number(value)||1))*100)/100;if(Math.abs(state.zoom-state.targetZoom)<.002)state.zoom=state.targetZoom;document.querySelectorAll('[data-zoom-value]').forEach(output=>{output.textContent=`${Math.round(state.targetZoom*100)}%`;});document.querySelectorAll('[data-zoom]').forEach(button=>{const next=state.targetZoom+Number(button.dataset.zoom);button.disabled=next<.999||next>1.601;});}
 document.querySelectorAll('[data-zoom]').forEach(button=>button.addEventListener('click',()=>setZoom(state.targetZoom+Number(button.dataset.zoom))));
