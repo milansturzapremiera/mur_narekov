@@ -91,6 +91,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {}, onComp
         </header>
         <main class="civava-stage">
           <canvas width="1000" height="560" aria-label="Hracia plocha. Potiahni čivavu dozadu a pusti ju smerom na konštrukciu."></canvas>
+          <p class="civava-rotate-hint">Pre lepší zážitok otoč mobil</p>
           <p class="civava-status" aria-live="polite">Potiahni čivavu dozadu a pusti.</p>
         </main>
         <section class="civava-cover civava-intro">
@@ -147,7 +148,9 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {}, onComp
   function fitCanvasToStage() {
     const rect=stage.getBoundingClientRect();
     if(rect.width<1||rect.height<1)return;
-    const scale=Math.min(rect.width/WIDTH,rect.height/HEIGHT);
+    const touchDevice=matchMedia('(pointer:coarse), (any-pointer:coarse)').matches;
+    const widePhone=touchDevice&&rect.width/rect.height>1.9;
+    const scale=widePhone?Math.min(rect.width*.92/WIDTH,rect.height/(HEIGHT-100)):Math.min(rect.width/WIDTH,rect.height/HEIGHT);
     canvas.style.width=`${Math.max(1,Math.floor(WIDTH*scale))}px`;
     canvas.style.height=`${Math.max(1,Math.floor(HEIGHT*scale))}px`;
   }
