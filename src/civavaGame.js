@@ -183,7 +183,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   function loosenBlock(block) {
     if(block.dead||block.broken)return;
     const motionScale=reducedMotion.matches ? .28 : 1;block.broken=true;block.unstableIn=null;block.vx=((Math.random()-.5)*80)*motionScale;block.vy=(-20-Math.random()*45)*motionScale;block.angularVelocity=reducedMotion.matches?0:(Math.random()-.5)*2.8;
-    burst(block.x,block.y,'#a84b32',6);
+    burst(block.x,block.y,'#a84b32',6);targets.forEach(target=>{if(!target.dead&&Math.hypot(target.x-block.x,target.y-block.y)<82)destroyTarget(target);});
   }
 
   function destroyBlock(block) {
@@ -199,6 +199,13 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   function destroyTarget(target) {
     if (target.dead) return;
     target.dead = true; score += 500; burst(target.x, target.y, '#f4efe5', 18);updateHud();
+  }
+
+  function levelCleared() {
+    if(targets.every(target=>target.dead))return true;
+    if(!blocks.every(block=>block.dead||block.broken))return false;
+    targets.forEach(target=>{if(!target.dead)destroyTarget(target);});
+    return true;
   }
 
   function collideProjectile() {
@@ -229,7 +236,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
   }
 
   function finishShot() {
-    if (targets.every(target => target.dead)) return finishLevel();
+    if (levelCleared()) return finishLevel();
     if (shots > 0) { resetProjectile(); return; }
     finishGame();
   }
@@ -290,6 +297,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     particles = particles.filter(particle => particle.life > 0);
     if (phase === 'level-clear') { resultTimer -= dt; if (resultTimer <= 0) advanceLevel(); }
     if (phase === 'ending') { resultTimer -= dt; if (resultTimer <= 0) showResult(); }
+    if(phase==='playing'&&levelCleared()){finishLevel();return;}
     if (phase !== 'playing' || !projectile.flying) return;
     projectile.age += dt;
     projectile.impact=Math.max(0,projectile.impact-dt*4.8);projectile.launchStretch=Math.max(0,projectile.launchStretch-dt*3.6);projectile.tumble=Math.max(0,projectile.tumble-dt);
@@ -310,8 +318,7 @@ export function createCivavaGame({ onOpen = () => {}, onClose = () => {} } = {})
     if(Math.abs(projectile.vx)>45)projectile.direction=Math.sign(projectile.vx);
     const slow = Math.hypot(projectile.vx, projectile.vy) < 34 && projectile.y + projectile.r >= GROUND - 2;
     projectile.rest = slow ? projectile.rest + dt : 0;
-    if (targets.every(target => target.dead)) finishLevel();
-    else if (projectile.rest > .75 || projectile.age > 6 || projectile.x > WIDTH + 120 || projectile.y > HEIGHT + 120) finishShot();
+    if (projectile.rest > .75 || projectile.age > 6 || projectile.x > WIDTH + 120 || projectile.y > HEIGHT + 120) finishShot();
   }
 
   function drawTrajectory() {
