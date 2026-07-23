@@ -47,7 +47,7 @@ function writeBest(value) {
 export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtrackVolume = () => .55 } = {}) {
   const host = document.createElement('div');
   host.innerHTML = `
-    <button class="ojha-prompt" type="button" hidden aria-label="Spustiť minihru Ojha: Útek pred otázkami" aria-haspopup="dialog" aria-controls="ojhaGame"><span aria-hidden="true">03</span></button>
+    <button class="ojha-prompt" type="button" hidden aria-label="Spustiť minihru Ojha: Útek pred otázkami" aria-haspopup="dialog" aria-controls="ojhaGame"></button>
     <button class="ojha-mobile-action" type="button" hidden aria-haspopup="dialog" aria-controls="ojhaGame">Hrať</button>
     <dialog class="ojha-game" id="ojhaGame" aria-labelledby="ojhaTitle">
       <div class="ojha-shell" data-state="intro">

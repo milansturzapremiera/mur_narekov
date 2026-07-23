@@ -812,8 +812,12 @@ function interactionPoint(interaction,offset,wallTop,ground,anchorX) {
   return{x:anchorX+(worldX-anchorX)*state.zoom,y:ground+(worldY-ground)*state.zoom,worldX,worldY};
 }
 
-function drawGameInteraction(c,point) {
+function drawGameInteraction(c,point,interaction) {
   if(!point)return;c.save();c.translate(point.worldX,point.worldY);c.scale(1/state.zoom,1/state.zoom);
+  const label=String(interaction?.name||'Minihra').trim().toUpperCase();c.font='700 12px "Barlow Condensed",sans-serif';
+  const labelWidth=Math.min(230,Math.max(76,c.measureText(label).width+18));
+  c.fillStyle='rgba(33,29,25,.94)';c.fillRect(-labelWidth/2,-48,labelWidth,24);
+  c.fillStyle='#f2eadb';c.textAlign='center';c.textBaseline='middle';c.fillText(label,0,-36,labelWidth-14);
   c.fillStyle='#f0c849';c.strokeStyle='#211d19';c.lineWidth=2;c.beginPath();c.arc(0,0,15,0,Math.PI*2);c.fill();c.stroke();
   c.fillStyle='#211d19';c.font='700 15px "Barlow Condensed",sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(mobileViewport.matches?'!':'E',0,1);c.restore();
 }
@@ -985,7 +989,7 @@ function render(now) {
   drawNightShade(ctx,state.nightMix);
   drawLightSources(ctx,off,wallTop,ground,now);
   drawLightGizmos(ctx,off,wallTop,ground);
-  if(activeInteraction&&activeInteractionOnScreen)drawGameInteraction(ctx,activeInteractionPoint);
+  if(activeInteraction&&activeInteractionOnScreen)drawGameInteraction(ctx,activeInteractionPoint,activeInteraction);
   state.events.filter(event=>event.type==='text').forEach(event=>{const bubbles=activeTextBubbles(event,wallNow);if(!bubbles.length&&import.meta.env.DEV&&state.sceneEditing&&state.editorLayer==='events'&&event.id===state.selectedEventId)bubbles.push({text:event.sequences?.[0]?.[0]||event.messages?.[0]||'TEXTOVÁ BUBLINA',opacity:.82,index:0});bubbles.forEach(bubble=>drawTextBubble(ctx,event,bubble,off,wallTop,ground));});
   drawEventGizmos(ctx,off,wallTop,ground);
   if(state.edit){
