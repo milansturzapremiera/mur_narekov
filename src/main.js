@@ -49,6 +49,9 @@ const SEGEDIN_BAG_VERSION_KEY = 'mur:segedin-zomri-bag-version';
 const CIVAVA_COMPANION_KEY = 'mur:angry-civava-companion-v1';
 const CIVAVA_COMPANION_ENABLED_KEY = 'mur:angry-civava-companion-enabled-v1';
 const CIVAVA_COMPANION_VERSION_KEY = 'mur:angry-civava-companion-version';
+const OJHA_BRIEFCASE_KEY = 'mur:ojha-briefcase-v1';
+const OJHA_BRIEFCASE_ENABLED_KEY = 'mur:ojha-briefcase-enabled-v1';
+const OJHA_BRIEFCASE_VERSION_KEY = 'mur:ojha-briefcase-version';
 const CIVAVA_COMPANION_SRC = '/assets/scene/1784366828126-pes.webp';
 const isLampItem = item => String(item?.name||'').toLocaleLowerCase('sk').startsWith('lampa') || String(item?.src||'').toLowerCase().includes('lampa');
 function automaticNightAmount(date = new Date()) {
@@ -70,7 +73,7 @@ function getVisitorId() {
 const visitorId = getVisitorId();
 const state = {
   started: false, running: false, x: 0, lane: .5, camera: 0, dir: 1, moving: 0, velocity: 0, stride: 0, zoom: 1, targetZoom: 1,
-  skin: 'tan', name: '', nameColor: '#f0c849', zomriBag: storedValue(SEGEDIN_BAG_KEY)==='1', zomriBagVersion: storedValue(SEGEDIN_BAG_VERSION_KEY)||'1', globalZomriBagVersion: '1', civavaCompanionUnlocked: storedValue(CIVAVA_COMPANION_KEY)==='1', civavaCompanion: storedValue(CIVAVA_COMPANION_KEY)==='1'&&storedValue(CIVAVA_COMPANION_ENABLED_KEY)!=='0', civavaCompanionVersion: storedValue(CIVAVA_COMPANION_VERSION_KEY)||'1', globalCivavaCompanionVersion: '1', companionX: null,
+  skin: 'tan', name: '', nameColor: '#f0c849', zomriBag: storedValue(SEGEDIN_BAG_KEY)==='1', zomriBagVersion: storedValue(SEGEDIN_BAG_VERSION_KEY)||'1', globalZomriBagVersion: '1', civavaCompanionUnlocked: storedValue(CIVAVA_COMPANION_KEY)==='1', civavaCompanion: storedValue(CIVAVA_COMPANION_KEY)==='1'&&storedValue(CIVAVA_COMPANION_ENABLED_KEY)!=='0', civavaCompanionVersion: storedValue(CIVAVA_COMPANION_VERSION_KEY)||'1', globalCivavaCompanionVersion: '1', companionX: null, ojhaBriefcaseUnlocked: storedValue(OJHA_BRIEFCASE_KEY)==='1', ojhaBriefcase: storedValue(OJHA_BRIEFCASE_KEY)==='1'&&storedValue(OJHA_BRIEFCASE_ENABLED_KEY)!=='0', ojhaBriefcaseVersion: storedValue(OJHA_BRIEFCASE_VERSION_KEY)||'1', globalOjhaBriefcaseVersion: '1',
   graffiti: [], others: [], edit: false, targetY: .5, targetX: 0, positionU: .5, section: 0, angle: 0,
   sceneItems: structuredClone(initialScene), lightSources: structuredClone(initialLights), events: structuredClone(initialEvents), interactions: structuredClone(initialInteractions), selectedSceneId: null, selectedLightId: null, selectedEventId: null, selectedInteractionId: null, followedEventId: null, followCameraX: null, followCameraSnap: false, devFreeCamera: false, devCameraX: 0, editorLayer: 'assets', sceneEditing: false,
   terrain: structuredClone(initialTerrain),
@@ -129,6 +132,9 @@ document.querySelector('#app').innerHTML = `
     </button>
     <button class="companion-toggle" id="companionToggle" type="button" hidden aria-pressed="true" aria-label="Vypnúť companion Čivavu" title="Companion Čivava">
       <svg aria-hidden="true" viewBox="0 0 24 24"><ellipse cx="12" cy="15.2" rx="5.2" ry="4.4"></ellipse><circle cx="6.1" cy="9.4" r="2.1"></circle><circle cx="10.1" cy="6.5" r="2.1"></circle><circle cx="14.2" cy="6.5" r="2.1"></circle><circle cx="18" cy="9.4" r="2.1"></circle><path class="companion-slash" d="m4 4 16 16"></path></svg>
+    </button>
+    <button class="briefcase-toggle" id="briefcaseToggle" type="button" hidden aria-pressed="true" aria-label="Vypnúť Kufrík bez komentára" title="Kufrík bez komentára">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 7V5.5h8V7"></path><rect x="3.5" y="7" width="17" height="12" rx="1"></rect><path d="M3.5 12.5h17M10 12.5v2h4v-2"></path><path class="briefcase-slash" d="m4 4 16 16"></path></svg>
     </button>
     <button class="write-button" id="writeButton" type="button"><span>＋</span> Zanechať odkaz</button>
     <div class="touch-controls" aria-label="Pohyb po chodníku">
@@ -247,6 +253,13 @@ const ojhaGame = createOjhaGame({
     resumeMusicAfterOjha=false;
     scheduleViewportResize();
     if(state.started)canvas.focus();
+  },
+  onBriefcaseUnlocked: () => {
+    const newlyUnlocked=!state.ojhaBriefcaseUnlocked;
+    state.ojhaBriefcaseUnlocked=true;state.ojhaBriefcase=true;state.ojhaBriefcaseVersion=state.globalOjhaBriefcaseVersion;
+    storeValue(OJHA_BRIEFCASE_KEY,'1');storeValue(OJHA_BRIEFCASE_ENABLED_KEY,'1');storeValue(OJHA_BRIEFCASE_VERSION_KEY,state.ojhaBriefcaseVersion);
+    updateBriefcaseControl();drawAvatar();
+    if(newlyUnlocked)toast('Odomknutý Kufrík bez komentára.');
   },
   soundtrackVolume: () => backgroundMusic.volume
 });
@@ -435,6 +448,17 @@ function drawPerson(c, x, ground, scale, p, motion=0, stride=0, walkEnergy=Math.
   const armShift=sway*3.5;
   c.strokeStyle=skin;c.lineWidth=7;c.beginPath();c.moveTo(-13,-67);c.lineTo(-19-armShift,-43);c.moveTo(13,-67);c.lineTo(19-armShift,-43);c.stroke();
   c.fillStyle='#171614';c.strokeStyle='#191816';c.lineWidth=2.5;c.beginPath();c.moveTo(-15,-74);c.lineTo(15,-74);c.lineTo(17,-34);c.lineTo(-17,-34);c.closePath();c.fill();c.stroke();
+
+  if(p.ojhaBriefcase){
+    const direction=p.dir<0?-1:1,caseSwing=gameMotionReduced()?0:sway*.055*energy;
+    c.save();c.translate(23-armShift,-42);c.rotate(caseSwing);
+    c.strokeStyle='#080807';c.fillStyle='#151413';c.lineWidth=2;
+    c.beginPath();c.rect(7,0,10,7);c.stroke();
+    c.beginPath();c.rect(-2,5,28,21);c.fill();c.stroke();
+    c.fillStyle='#69b7f0';c.fillRect(1,11,22,9);
+    c.save();c.scale(direction,1);c.fillStyle='#11100f';c.font='700 4.6px "Barlow Condensed",sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('BEZ KOMENTÁRA',12*direction,15.7,20);c.restore();
+    c.restore();
+  }
 
   c.fillStyle=skin;c.strokeStyle='#191816';c.lineWidth=2.5;c.beginPath();c.arc(0,-91,16,0,Math.PI*2);c.fill();c.stroke();
   c.fillStyle='#29221e';c.beginPath();c.arc(0,-97,16,Math.PI,Math.PI*2);c.fill();
@@ -1033,7 +1057,7 @@ async function loadWorld(){
   try{const r=await fetch('/api/graffiti',{headers:{'X-Writer-Id':visitorId}});if(!r.ok)throw 0;const data=await r.json();state.mode='shared';state.graffiti=data.items;state.hasWritten=WRITE_LIMIT_ENABLED&&Boolean(data.hasWritten);if(state.hasWritten)storeValue(WRITTEN_KEY,'1');else removeStoredValue(WRITTEN_KEY);if(!state.hasWritten)$('#editorNote').textContent=WRITE_LIMIT_ENABLED?'Máš jeden odkaz. Po uložení ho uvidia aj ďalší návštevníci.':'DEV režim: odkazy môžeš pridávať bez obmedzenia.';}catch{}finally{updateWriteAccess();}
 }
 loadWorld();
-async function loadRewardVersions(){try{const r=await fetch('/api/presence');if(!r.ok)return;const data=await r.json();applyZomriBagVersion(data.zomriBagVersion);applyCivavaCompanionVersion(data.civavaCompanionVersion);}catch{}}
+async function loadRewardVersions(){try{const r=await fetch('/api/presence');if(!r.ok)return;const data=await r.json();applyZomriBagVersion(data.zomriBagVersion);applyCivavaCompanionVersion(data.civavaCompanionVersion);applyOjhaBriefcaseVersion(data.ojhaBriefcaseVersion);}catch{}}
 loadRewardVersions();
 function applyZomriBagVersion(value) {
   const version=String(value||'1').trim().slice(0,32)||'1';
@@ -1049,16 +1073,25 @@ function applyCivavaCompanionVersion(value) {
   removeStoredValue(CIVAVA_COMPANION_KEY);removeStoredValue(CIVAVA_COMPANION_ENABLED_KEY);storeValue(CIVAVA_COMPANION_VERSION_KEY,version);updateCompanionControl();
   if(hadCompanion)toast('Companion Čivavy boli globálne resetované.');
 }
-function receivePresence(players,{replace=false,zomriBagVersion,civavaCompanionVersion}={}){
+function applyOjhaBriefcaseVersion(value) {
+  const version=String(value||'1').trim().slice(0,32)||'1',hadBriefcase=state.ojhaBriefcaseUnlocked;
+  state.globalOjhaBriefcaseVersion=version;
+  if(state.ojhaBriefcaseVersion===version)return;
+  state.ojhaBriefcaseUnlocked=false;state.ojhaBriefcase=false;state.ojhaBriefcaseVersion=version;
+  removeStoredValue(OJHA_BRIEFCASE_KEY);removeStoredValue(OJHA_BRIEFCASE_ENABLED_KEY);storeValue(OJHA_BRIEFCASE_VERSION_KEY,version);updateBriefcaseControl();drawAvatar();
+  if(hadBriefcase)toast('Kufríky bez komentára boli globálne resetované.');
+}
+function receivePresence(players,{replace=false,zomriBagVersion,civavaCompanionVersion,ojhaBriefcaseVersion}={}){
   if(zomriBagVersion)applyZomriBagVersion(zomriBagVersion);
   if(civavaCompanionVersion)applyCivavaCompanionVersion(civavaCompanionVersion);
+  if(ojhaBriefcaseVersion)applyOjhaBriefcaseVersion(ojhaBriefcaseVersion);
   const receivedAt=performance.now(),current=new Map(state.others.map(player=>[player.id,player])),incoming=new Set();
   (Array.isArray(players)?players:[]).forEach(packet=>{
     const id=String(packet?.id||'');if(!id||id===uid)return;incoming.add(id);
     const previous=current.get(id),packetTime=Number(packet.t)||Date.now();
     if(previous&&packetTime<previous.packetTime)return;
     const targetX=Math.max(0,Math.min(700,Number(packet.x)||0));
-    current.set(id,{...packet,id,zomriBag:packet.zomriBag===true&&String(packet.zomriBagVersion||'1')===state.globalZomriBagVersion,civavaCompanion:packet.civavaCompanion===true&&String(packet.civavaCompanionVersion||'1')===state.globalCivavaCompanionVersion,targetX,displayX:Number.isFinite(previous?.displayX)?previous.displayX:targetX,companionX:Number.isFinite(previous?.companionX)?previous.companionX:null,velocity:Math.max(-60,Math.min(60,Number(packet.velocity)||0)),running:packet.running===true,packetTime,receivedAt,stride:previous?.stride||0});
+    current.set(id,{...packet,id,zomriBag:packet.zomriBag===true&&String(packet.zomriBagVersion||'1')===state.globalZomriBagVersion,civavaCompanion:packet.civavaCompanion===true&&String(packet.civavaCompanionVersion||'1')===state.globalCivavaCompanionVersion,ojhaBriefcase:packet.ojhaBriefcase===true&&String(packet.ojhaBriefcaseVersion||'1')===state.globalOjhaBriefcaseVersion,targetX,displayX:Number.isFinite(previous?.displayX)?previous.displayX:targetX,companionX:Number.isFinite(previous?.companionX)?previous.companionX:null,velocity:Math.max(-60,Math.min(60,Number(packet.velocity)||0)),running:packet.running===true,packetTime,receivedAt,stride:previous?.stride||0});
   });
   if(replace)for(const id of current.keys())if(!incoming.has(id))current.delete(id);
   state.others=[...current.values()].filter(player=>receivedAt-player.receivedAt<16000);
@@ -1075,9 +1108,9 @@ setInterval(async()=>{
   if(!state.started)return;
   if(state.minigame){if(!state.presenceIdle){state.presenceIdle=true;announcePresenceLeave();}return;}
   if(Date.now()-state.lastPlayerMovementAt>=PRESENCE_IDLE_MS){if(!state.presenceIdle){state.presenceIdle=true;state.velocity=0;state.running=false;announcePresenceLeave();}return;}
-  const me={id:uid,x:state.x,lane:state.lane,skin:state.skin,name:state.name,nameColor:state.nameColor,zomriBag:state.zomriBag,zomriBagVersion:state.zomriBagVersion,civavaCompanion:state.civavaCompanion,civavaCompanionVersion:state.civavaCompanionVersion,dir:state.dir,velocity:state.velocity,running:state.running,t:Date.now()};
+  const me={id:uid,x:state.x,lane:state.lane,skin:state.skin,name:state.name,nameColor:state.nameColor,zomriBag:state.zomriBag,zomriBagVersion:state.zomriBagVersion,civavaCompanion:state.civavaCompanion,civavaCompanionVersion:state.civavaCompanionVersion,ojhaBriefcase:state.ojhaBriefcase,ojhaBriefcaseVersion:state.ojhaBriefcaseVersion,dir:state.dir,velocity:state.velocity,running:state.running,t:Date.now()};
   channel?.postMessage({type:'presence',players:[me]});
-  if(state.mode==='shared'&&!presenceRequestPending){presenceRequestPending=true;try{const r=await fetch('/api/presence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(me)});if(r.ok){const data=await r.json();receivePresence(data.players,{replace:true,zomriBagVersion:data.zomriBagVersion,civavaCompanionVersion:data.civavaCompanionVersion});}}catch{}finally{presenceRequestPending=false;}}
+  if(state.mode==='shared'&&!presenceRequestPending){presenceRequestPending=true;try{const r=await fetch('/api/presence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(me)});if(r.ok){const data=await r.json();receivePresence(data.players,{replace:true,zomriBagVersion:data.zomriBagVersion,civavaCompanionVersion:data.civavaCompanionVersion,ojhaBriefcaseVersion:data.ojhaBriefcaseVersion});}}catch{}finally{presenceRequestPending=false;}}
 },1000);
 
 $('#characterForm').addEventListener('change',e=>{if(e.target.name==='skin')state.skin=e.target.value;drawAvatar();});
@@ -1096,10 +1129,15 @@ setZoom(state.targetZoom);
 const desktopZoom=$('.desktop-zoom'),desktopZoomToggle=$('.desktop-zoom-toggle');
 const mobileUiToggle=$('#mobileUiToggle');
 const companionToggle=$('#companionToggle');
+const briefcaseToggle=$('#briefcaseToggle');
 function updateCompanionControl(){const unlocked=state.civavaCompanionUnlocked===true,enabled=unlocked&&state.civavaCompanion===true;companionToggle.hidden=!unlocked;companionToggle.setAttribute('aria-pressed',String(enabled));companionToggle.setAttribute('aria-label',enabled?'Vypnúť companion Čivavu':'Zapnúť companion Čivavu');companionToggle.title=enabled?'Vypnúť companion Čivavu':'Zapnúť companion Čivavu';}
 function setCompanionEnabled(enabled){if(!state.civavaCompanionUnlocked)return;state.civavaCompanion=Boolean(enabled);state.companionX=null;storeValue(CIVAVA_COMPANION_ENABLED_KEY,state.civavaCompanion?'1':'0');updateCompanionControl();toast(state.civavaCompanion?'Angry Čivava ťa znovu sprevádza.':'Angry Čivava zostáva odomknutá, ale je skrytá.');}
 companionToggle.addEventListener('click',()=>setCompanionEnabled(!state.civavaCompanion));
 updateCompanionControl();
+function updateBriefcaseControl(){const unlocked=state.ojhaBriefcaseUnlocked===true,enabled=unlocked&&state.ojhaBriefcase===true;briefcaseToggle.hidden=!unlocked;briefcaseToggle.setAttribute('aria-pressed',String(enabled));briefcaseToggle.setAttribute('aria-label',enabled?'Vypnúť Kufrík bez komentára':'Zapnúť Kufrík bez komentára');briefcaseToggle.title=enabled?'Vypnúť Kufrík bez komentára':'Zapnúť Kufrík bez komentára';}
+function setBriefcaseEnabled(enabled){if(!state.ojhaBriefcaseUnlocked)return;state.ojhaBriefcase=Boolean(enabled);storeValue(OJHA_BRIEFCASE_ENABLED_KEY,state.ojhaBriefcase?'1':'0');updateBriefcaseControl();drawAvatar();toast(state.ojhaBriefcase?'Kufrík bez komentára je späť v ruke.':'Kufrík zostáva odomknutý, ale je skrytý.');}
+briefcaseToggle.addEventListener('click',()=>setBriefcaseEnabled(!state.ojhaBriefcase));
+updateBriefcaseControl();
 function setMobileUiHidden(hidden){document.documentElement.classList.toggle('mobile-ui-hidden',hidden);mobileUiToggle.setAttribute('aria-pressed',String(hidden));mobileUiToggle.setAttribute('aria-label',hidden?'Zobraziť rozhranie':'Skryť rozhranie');if(hidden){setAudioExpanded(false);setGraffitiIndex(false);}}
 mobileUiToggle.addEventListener('click',()=>setMobileUiHidden(!document.documentElement.classList.contains('mobile-ui-hidden')));
 function setDesktopZoomMode(active){desktopZoom.classList.toggle('active',active);document.documentElement.classList.toggle('desktop-zoom-mode',active);desktopZoomToggle.setAttribute('aria-expanded',String(active));desktopZoomToggle.setAttribute('aria-label',active?'Ukončiť zoom a čistý režim':'Otvoriť zoom a čistý režim');if(active)setGraffitiIndex(false);}
@@ -1218,6 +1256,15 @@ if (import.meta.env.DEV) {
       state.zomriBagVersion=state.globalZomriBagVersion;
       storeValue(SEGEDIN_BAG_VERSION_KEY,state.zomriBagVersion);
       drawAvatar();
+      return removed;
+    },
+    resetOjhaBriefcase: () => {
+      const removed = state.ojhaBriefcaseUnlocked;
+      state.ojhaBriefcaseUnlocked=false;state.ojhaBriefcase=false;
+      removeStoredValue(OJHA_BRIEFCASE_KEY);removeStoredValue(OJHA_BRIEFCASE_ENABLED_KEY);
+      state.ojhaBriefcaseVersion=state.globalOjhaBriefcaseVersion;
+      storeValue(OJHA_BRIEFCASE_VERSION_KEY,state.ojhaBriefcaseVersion);
+      updateBriefcaseControl();drawAvatar();
       return removed;
     },
     screenToScene: (clientX, clientY) => { const point=screenToWorldPoint(clientX,clientY);return {x:Math.max(0,Math.min(700,point.x)),y:Math.max(-2.5,Math.min(5,point.y))}; },

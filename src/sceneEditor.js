@@ -279,6 +279,10 @@ export function mountSceneEditor(api) {
         <p>Odoberie ZOMRI tašku hráčovi v celej hre. Najlepšie skóre zostane zachované.</p>
         <button type="button" data-action="reset-zomri-bag">Resetovať ZOMRI tašku</button>
       </div>
+      <div class="dev-graffiti-tools">
+        <p>Odoberie hráčovi Kufrík bez komentára. Najlepší výsledok Runu zostane zachovaný.</p>
+        <button type="button" data-action="reset-ojha-briefcase">Resetovať kufrík</button>
+      </div>
     </details>
     </div>
     <footer class="dev-scene-footer">
@@ -684,6 +688,10 @@ export function mountSceneEditor(api) {
   panel.querySelector('[data-action="reset-zomri-bag"]').addEventListener('click', () => {
     const removed = api.resetZomriBag();
     api.notify(removed ? 'ZOMRI taška bola hráčovi odobratá.' : 'Hráč už ZOMRI tašku nemá.');
+  });
+  panel.querySelector('[data-action="reset-ojha-briefcase"]').addEventListener('click', () => {
+    const removed = api.resetOjhaBriefcase();
+    api.notify(removed ? 'Kufrík bez komentára bol hráčovi odobratý.' : 'Hráč už kufrík nemá.');
   });
 
   terrainForm.addEventListener('input', event => {

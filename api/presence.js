@@ -5,10 +5,12 @@ export default async function handler(req, res) {
   try {
     const zomriBagVersion = String(process.env.ZOMRI_BAG_VERSION || '1').trim().slice(0, 32) || '1';
     const civavaCompanionVersion = String(process.env.CIVAVA_COMPANION_VERSION || '1').trim().slice(0, 32) || '1';
+    const ojhaBriefcaseVersion = String(process.env.OJHA_BRIEFCASE_VERSION || '1').trim().slice(0, 32) || '1';
     if (req.method === 'POST') {
       const p = req.body || {};
       const playerBagVersion = String(p.zomriBagVersion || '1').trim().slice(0, 32) || '1';
       const playerCompanionVersion = String(p.civavaCompanionVersion || '1').trim().slice(0, 32) || '1';
+      const playerBriefcaseVersion = String(p.ojhaBriefcaseVersion || '1').trim().slice(0, 32) || '1';
       const safe = {
         id: String(p.id).slice(0, 80), x: Math.max(0, Math.min(700, Number(p.x))),
         lane: Math.max(0, Math.min(1, Number(p.lane) || 0)),
@@ -19,6 +21,8 @@ export default async function handler(req, res) {
         zomriBagVersion: playerBagVersion,
         civavaCompanion: p.civavaCompanion === true && playerCompanionVersion === civavaCompanionVersion,
         civavaCompanionVersion: playerCompanionVersion,
+        ojhaBriefcase: p.ojhaBriefcase === true && playerBriefcaseVersion === ojhaBriefcaseVersion,
+        ojhaBriefcaseVersion: playerBriefcaseVersion,
         dir: Number(p.dir) < 0 ? -1 : 1,
         velocity: Math.max(-60, Math.min(60, Number(p.velocity) || 0)),
         running: p.running === true, disconnected: p.disconnected === true,
@@ -34,9 +38,10 @@ export default async function handler(req, res) {
     const players = [...latest.values()].map(player => ({
       ...player,
       zomriBag: player.zomriBag === true && String(player.zomriBagVersion || '1') === zomriBagVersion,
-      civavaCompanion: player.civavaCompanion === true && String(player.civavaCompanionVersion || '1') === civavaCompanionVersion
+      civavaCompanion: player.civavaCompanion === true && String(player.civavaCompanionVersion || '1') === civavaCompanionVersion,
+      ojhaBriefcase: player.ojhaBriefcase === true && String(player.ojhaBriefcaseVersion || '1') === ojhaBriefcaseVersion
     }));
-    return send(res, 200, { players, zomriBagVersion, civavaCompanionVersion });
+    return send(res, 200, { players, zomriBagVersion, civavaCompanionVersion, ojhaBriefcaseVersion });
   } catch {
     return send(res, 500, { players: [] });
   }

@@ -49,7 +49,7 @@ function writeBest(value) {
   try { localStorage.setItem(BEST_KEY, String(value)); } catch {}
 }
 
-export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtrackVolume = () => .55 } = {}) {
+export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, onBriefcaseUnlocked = () => {}, soundtrackVolume = () => .55 } = {}) {
   const host = document.createElement('div');
   host.innerHTML = `
     <button class="ojha-prompt" type="button" hidden aria-label="Spustiť minihru Ojha: Útek pred otázkami" aria-haspopup="dialog" aria-controls="ojhaGame"></button>
@@ -264,11 +264,13 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtra
     score += timeBonus + accuracyBonus;
     const best = Math.max(readBest(), score);
     if (won) writeBest(best);
+    const perfectEscape = won && errors === 0;
+    if (perfectEscape) onBriefcaseUnlocked();
     dialog.querySelector('[data-result-kicker]').textContent = won ? 'ÚTEK JE NA KONCI' : 'NOVINÁRI BOLI RÝCHLEJŠÍ';
     dialog.querySelector('[data-result-title]').textContent = won ? 'Ojha sa vrátil.' : 'Ojha musel odpovedať.';
     dialog.querySelector('[data-final-score]').textContent = String(score);
     dialog.querySelector('[data-result-note]').textContent = won
-      ? `${errors ? `Chyby: ${errors}.` : 'Bez jediného zaváhania.'} Najlepší výsledok: ${best}.`
+      ? `${errors ? `Chyby: ${errors}.` : 'Bez jediného zaváhania. Kufrík bez komentára je odomknutý.'} Najlepší výsledok: ${best}.`
       : 'Tri nárazy. Päť otázok. Žiadny ďalší únik.';
     result.hidden = false;
     shell.dataset.state = 'result';
