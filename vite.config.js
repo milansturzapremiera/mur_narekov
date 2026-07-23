@@ -86,7 +86,7 @@ function cleanInteraction(interaction) {
   const number=(key,fallback,min,max)=>{const value=Number(interaction[key]);return Number.isFinite(value)?Math.max(min,Math.min(max,value)):fallback;};
   return {
     id:String(interaction.id||'').slice(0,80),name:String(interaction.name||'Interakcia').trim().slice(0,60),
-    game:interaction.game==='civava'?'civava':'segedin',x:number('x',0,0,700),y:number('y',.7,-3,5),
+    game:['segedin','civava','ojha'].includes(interaction.game)?interaction.game:'segedin',x:number('x',0,0,700),y:number('y',.7,-3,5),
     radiusM:number('radiusM',2.2,.5,20),enabled:interaction.enabled!==false
   };
 }

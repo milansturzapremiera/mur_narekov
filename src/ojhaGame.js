@@ -13,6 +13,7 @@ const ASSETS = {
 const TOTAL_DISTANCE = 900;
 const CRASH_DISTANCE = 610;
 const VIEW_DISTANCE = 170;
+const JUMP_DURATION = .92;
 const BEST_KEY = 'mur:ojha-best-v1';
 const QUESTIONS = [
   'Ako ste mysleli, že to mala byť priemyselná špionáž?',
@@ -279,11 +280,11 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {} } = {}) {
       lane += (targetLane - lane) * (1 - Math.exp(-12 * dt));
       if (jumpTime > 0) {
         jumpTime += dt;
-        if (jumpTime >= .82) jumpTime = 0;
+        if (jumpTime >= JUMP_DURATION) jumpTime = 0;
       }
       slowTime = Math.max(0, slowTime - dt);
       const scene = sceneIndexAt(distance);
-      const baseSpeed = [17.5, 19.5, 21.5][scene];
+      const baseSpeed = [28, 31.5, 35][scene];
       const oldDistance = distance;
       distance += baseSpeed * (slowTime > 0 ? .42 : 1) * dt;
       score += Math.round(baseSpeed * dt * (8 + Math.min(combo, 8)));
@@ -296,8 +297,8 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {} } = {}) {
       obstacles.forEach(obstacle => {
         if (obstacle.handled || oldDistance >= obstacle.at || distance < obstacle.at) return;
         obstacle.handled = true;
-        const jumpHeight = jumpTime > 0 ? Math.sin(Math.PI * clamp(jumpTime / .82, 0, 1)) : 0;
-        if (Math.abs(lane - obstacle.lane) < .48 && jumpHeight < .46) hitObstacle(now);
+        const airborne = jumpTime >= .045 && jumpTime <= JUMP_DURATION - .08;
+        if (Math.abs(lane - obstacle.lane) < .48 && !airborne) hitObstacle(now);
         else clearObstacle();
       });
 
@@ -402,11 +403,11 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {} } = {}) {
     const jumping = jumpTime > 0;
     const image = jumping ? images.jump : images.run;
     if (!image?.complete) return;
-    const progress = jumping ? clamp(jumpTime / .82, 0, .999) : (now / (slowTime > 0 ? 175 : 105)) % 5 / 5;
+    const progress = jumping ? clamp(jumpTime / JUMP_DURATION, 0, .999) : (now / (slowTime > 0 ? 150 : 82)) % 5 / 5;
     const spriteFrame = jumping ? Math.min(4, Math.floor(progress * 5)) : Math.floor(progress * 5);
     const frameWidth = image.width / 5;
     const scale = clamp(Math.min(width / 620, height / 690), .52, 1.12);
-    const drawHeight = 178 * scale;
+    const drawHeight = 242 * scale;
     const drawWidth = drawHeight * frameWidth / image.height;
     const jumpLift = jumping ? Math.sin(Math.PI * progress) * height * .15 : 0;
     const laneSpread = width * [.23, .145, .16][sceneIndexAt(distance)];
