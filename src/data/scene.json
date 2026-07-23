@@ -206,8 +206,8 @@
     "src": "/assets/scene/1784141166413-lampa.webp",
     "layer": "front",
     "visibility": "always",
-    "x": 231.02,
-    "y": 1.395,
+    "x": 231.29,
+    "y": 1.333,
     "widthM": 8.7,
     "rotation": 0,
     "animated": false,
@@ -3083,5 +3083,21 @@
     "fps": 6,
     "frameDirection": "horizontal",
     "phase": 0.8241598774784783
+  },
+  {
+    "id": "83f6693b-2bff-404b-b7dc-20b26f595c7c",
+    "name": "sisa",
+    "src": "/assets/scene/1784822558547-sisa.png",
+    "layer": "front",
+    "visibility": "always",
+    "x": 225.42,
+    "y": 1.164,
+    "widthM": 3.2,
+    "rotation": 0,
+    "animated": true,
+    "frames": 5,
+    "fps": 1,
+    "frameDirection": "horizontal",
+    "phase": 0.39092785960640475
   }
 ]
