@@ -12,7 +12,7 @@ const ASSETS = {
 
 const TOTAL_DISTANCE = 900;
 const CRASH_DISTANCE = 610;
-const VIEW_DISTANCE = 170;
+const VIEW_DISTANCE = 195;
 const JUMP_DURATION = .92;
 const BEST_KEY = 'mur:ojha-best-v1';
 const SOUNDTRACK_SRC = '/assets/audio/run.mp3';
@@ -288,7 +288,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtra
       }
       slowTime = Math.max(0, slowTime - dt);
       const scene = sceneIndexAt(distance);
-      const baseSpeed = [28, 31.5, 35][scene];
+      const baseSpeed = [35, 40, 45][scene];
       const oldDistance = distance;
       distance += baseSpeed * (slowTime > 0 ? .42 : 1) * dt;
       score += Math.round(baseSpeed * dt * (8 + Math.min(combo, 8)));
@@ -337,7 +337,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtra
 
   function drawCoverImage(image, width, height, progress = 0) {
     if (!image?.complete) {
-      context.fillStyle = '#d4c9af';
+      context.fillStyle = '#dfe8ef';
       context.fillRect(0, 0, width, height);
       return;
     }
@@ -407,7 +407,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtra
     const jumping = jumpTime > 0;
     const image = jumping ? images.jump : images.run;
     if (!image?.complete) return;
-    const progress = jumping ? clamp(jumpTime / JUMP_DURATION, 0, .999) : (now / (slowTime > 0 ? 150 : 82)) % 5 / 5;
+    const progress = jumping ? clamp(jumpTime / JUMP_DURATION, 0, .999) : (now / (slowTime > 0 ? 125 : 66)) % 5 / 5;
     const spriteFrame = jumping ? Math.min(4, Math.floor(progress * 5)) : Math.floor(progress * 5);
     const frameWidth = image.width / 5;
     const scale = clamp(Math.min(width / 620, height / 690), .52, 1.12);
@@ -455,7 +455,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtra
     drawPlayer(now, width, height);
     drawAudi(width, height);
     if (phase === 'crash' && crashTime > .7 && crashTime < 1.05) {
-      context.fillStyle = `rgba(247,212,0,${Math.sin((crashTime - .7) / .35 * Math.PI) * .62})`;
+      context.fillStyle = `rgba(92,177,238,${Math.sin((crashTime - .7) / .35 * Math.PI) * .62})`;
       context.fillRect(0, 0, width, height);
     }
   }
