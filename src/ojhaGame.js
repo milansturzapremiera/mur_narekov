@@ -15,6 +15,7 @@ const CRASH_DISTANCE = 610;
 const VIEW_DISTANCE = 170;
 const JUMP_DURATION = .92;
 const BEST_KEY = 'mur:ojha-best-v1';
+const SOUNDTRACK_SRC = '/assets/audio/run.mp3';
 const QUESTIONS = [
   'Ako ste mysleli, že to mala byť priemyselná špionáž?',
   'Prosím vás, naozaj utekáte?',
@@ -43,7 +44,7 @@ function writeBest(value) {
   try { localStorage.setItem(BEST_KEY, String(value)); } catch {}
 }
 
-export function createOjhaGame({ onOpen = () => {}, onClose = () => {} } = {}) {
+export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtrackVolume = () => .55 } = {}) {
   const host = document.createElement('div');
   host.innerHTML = `
     <button class="ojha-prompt" type="button" hidden aria-label="Spustiť minihru Ojha: Útek pred otázkami" aria-haspopup="dialog" aria-controls="ojhaGame"><span aria-hidden="true">03</span></button>
@@ -109,6 +110,9 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {} } = {}) {
   const errorOutput = host.querySelector('[data-errors]');
   const sceneOutput = host.querySelector('[data-scene]');
   const images = {};
+  const soundtrack = new Audio();
+  soundtrack.loop = true;
+  soundtrack.preload = 'none';
   document.body.append(prompt, mobileAction, dialog);
 
   let available = false;
@@ -472,6 +476,18 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {} } = {}) {
     frame = requestAnimationFrame(loop);
   }
 
+  function startSoundtrack() {
+    if (!soundtrack.src) soundtrack.src = SOUNDTRACK_SRC;
+    soundtrack.volume = clamp(soundtrackVolume(), 0, 1);
+    soundtrack.currentTime = 0;
+    soundtrack.play().catch(() => {});
+  }
+
+  function stopSoundtrack() {
+    soundtrack.pause();
+    soundtrack.currentTime = 0;
+  }
+
   function open() {
     if (!available || dialog.open) return;
     shell.dataset.state = 'intro';
@@ -483,6 +499,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {} } = {}) {
     requestAnimationFrame(resizeCanvas);
     ensureAssets();
     onOpen();
+    startSoundtrack();
     startLoop();
     (ready ? startButton : dialog.querySelector('.ojha-close')).focus();
   }
@@ -495,6 +512,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {} } = {}) {
     active = false;
     cancelAnimationFrame(frame);
     pointerStart = null;
+    stopSoundtrack();
     document.documentElement.classList.remove('ojha-game-open');
     prompt.hidden = !available;
     mobileAction.hidden = !available;

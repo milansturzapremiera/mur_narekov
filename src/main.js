@@ -236,14 +236,19 @@ const civavaGame = createCivavaGame({
 });
 const ojhaGame = createOjhaGame({
   onOpen: () => {
+    resumeMusicAfterOjha=musicEnabled&&!backgroundMusic.paused;
+    if(resumeMusicAfterOjha)backgroundMusic.pause();
     state.minigame=true;state.velocity=0;state.keys.clear();releaseTouchInput();state.presenceIdle=true;
     announcePresenceLeave();
   },
   onClose: () => {
     state.minigame=false;state.lastPlayerMovementAt=Date.now();state.presenceIdle=false;
+    if(resumeMusicAfterOjha&&musicEnabled)startMusic();
+    resumeMusicAfterOjha=false;
     scheduleViewportResize();
     if(state.started)canvas.focus();
-  }
+  },
+  soundtrackVolume: () => backgroundMusic.volume
 });
 const minigames = { segedin: segedinGame, civava: civavaGame, ojha: ojhaGame };
 
@@ -301,6 +306,7 @@ applyLandingText();
 const savedMusicVolume = Number.parseFloat(storedValue(MUSIC_VOLUME_KEY));
 const savedTrack = Number.parseInt(storedValue(MUSIC_TRACK_KEY),10);
 let musicEnabled = storedValue(MUSIC_ENABLED_KEY) !== '0';
+let resumeMusicAfterOjha = false;
 let currentTrack = Number.isInteger(savedTrack) && savedTrack >= 0 && savedTrack < TRACKS.length ? savedTrack : 0;
 backgroundMusic.volume = Number.isFinite(savedMusicVolume) ? Math.min(1,Math.max(0,savedMusicVolume)) : .45;
 musicVolume.value = String(backgroundMusic.volume);
