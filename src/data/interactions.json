@@ -16,5 +16,14 @@
     "y": 0.715,
     "radiusM": 2.2,
     "enabled": true
+  },
+  {
+    "id": "game-ojha",
+    "name": "Ojha: Útek pred otázkami",
+    "game": "ojha",
+    "x": 105,
+    "y": 0.715,
+    "radiusM": 2.2,
+    "enabled": true
   }
 ]

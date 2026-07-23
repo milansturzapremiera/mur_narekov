@@ -262,7 +262,7 @@ export function mountSceneEditor(api) {
     <form class="dev-interaction-properties" hidden>
       <div class="dev-detail-head"><button type="button" data-action="back-to-interactions">← Späť na interakcie</button><strong data-interaction-detail-name></strong></div>
       <label>Názov<input name="name" maxlength="60"></label>
-      <label>Minihra<select name="game"><option value="segedin">01 · Segedínový algoritmus</option><option value="civava">02 · Angry Čivava</option></select></label>
+      <label>Minihra<select name="game"><option value="segedin">01 · Segedínový algoritmus</option><option value="civava">02 · Angry Čivava</option><option value="ojha">03 · Ojha: Útek pred otázkami</option></select></label>
       <div class="dev-scene-pair"><label>Meter X<input name="x" type="number" min="0" max="700" step="0.05"></label><label>Poloha Y<input name="y" type="number" min="-3" max="5" step="0.01"></label></div>
       <label>Aktivačný dosah <output data-interaction-output="radiusM"></output><input name="radiusM" type="range" min="0.5" max="20" step="0.1"></label>
       <label class="dev-animation-toggle"><input name="enabled" type="checkbox"><span>Interakcia je aktívna</span></label>
@@ -603,7 +603,7 @@ export function mountSceneEditor(api) {
   function renderInteractionList() {
     interactionList.replaceChildren();
     if(!interactions.length){const empty=document.createElement('p');empty.className='dev-scene-empty';empty.textContent='Pridaj prvú interakčnú zónu.';interactionList.append(empty);}
-    else interactions.forEach(interaction=>{const button=document.createElement('button');button.type='button';button.className='dev-interaction-item';button.dataset.interactionId=interaction.id;button.setAttribute('aria-pressed',String(interaction.id===selectedInteractionId));const icon=document.createElement('span');icon.className='dev-interaction-icon';icon.textContent=interaction.game==='civava'?'02':'01';const copy=document.createElement('span'),name=document.createElement('b'),meta=document.createElement('small');name.textContent=interaction.name;meta.textContent=`${interaction.enabled===false?'VYPNUTÁ':'AKTÍVNA'} · ${Number(interaction.x).toFixed(1)} m · DOSAH ${Number(interaction.radiusM||2.2).toFixed(1)} m`;copy.append(name,meta);button.append(icon,copy);interactionList.append(button);});
+    else interactions.forEach(interaction=>{const button=document.createElement('button');button.type='button';button.className='dev-interaction-item';button.dataset.interactionId=interaction.id;button.setAttribute('aria-pressed',String(interaction.id===selectedInteractionId));const icon=document.createElement('span');icon.className='dev-interaction-icon';icon.textContent=interaction.game==='ojha'?'03':interaction.game==='civava'?'02':'01';const copy=document.createElement('span'),name=document.createElement('b'),meta=document.createElement('small');name.textContent=interaction.name;meta.textContent=`${interaction.enabled===false?'VYPNUTÁ':'AKTÍVNA'} · ${Number(interaction.x).toFixed(1)} m · DOSAH ${Number(interaction.radiusM||2.2).toFixed(1)} m`;copy.append(name,meta);button.append(icon,copy);interactionList.append(button);});
     syncDetailState();
   }
 
@@ -849,7 +849,7 @@ export function mountSceneEditor(api) {
   interactionForm.addEventListener('input',inputEvent=>{
     const interaction=selectedInteraction(),field=inputEvent.target.name;if(!interaction||!field)return;
     if(field==='name')interaction.name=inputEvent.target.value.slice(0,60);
-    else if(field==='game')interaction.game=inputEvent.target.value==='civava'?'civava':'segedin';
+    else if(field==='game')interaction.game=['segedin','civava','ojha'].includes(inputEvent.target.value)?inputEvent.target.value:'segedin';
     else if(field==='x')interaction.x=clamp(inputEvent.target.value,0,700);
     else if(field==='y')interaction.y=clamp(inputEvent.target.value,-3,5);
     else if(field==='radiusM')interaction.radiusM=clamp(inputEvent.target.value,.5,20);

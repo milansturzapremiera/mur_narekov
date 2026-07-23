@@ -7,6 +7,7 @@ import initialEvents from './data/events.json';
 import initialInteractions from './data/interactions.json';
 import { createSegedinGame } from './segedinGame.js';
 import { createCivavaGame } from './civavaGame.js';
+import { createOjhaGame } from './ojhaGame.js';
 
 const FONTS = [
   ['Impact', 'Impact, Haettenschweiler, sans-serif'], ['Krieda', '"Comic Sans MS", cursive'],
@@ -233,7 +234,18 @@ const civavaGame = createCivavaGame({
     updateCompanionControl();
   }
 });
-const minigames = { segedin: segedinGame, civava: civavaGame };
+const ojhaGame = createOjhaGame({
+  onOpen: () => {
+    state.minigame=true;state.velocity=0;state.keys.clear();releaseTouchInput();state.presenceIdle=true;
+    announcePresenceLeave();
+  },
+  onClose: () => {
+    state.minigame=false;state.lastPlayerMovementAt=Date.now();state.presenceIdle=false;
+    scheduleViewportResize();
+    if(state.started)canvas.focus();
+  }
+});
+const minigames = { segedin: segedinGame, civava: civavaGame, ojha: ojhaGame };
 
 function setAccessGranted(granted) {
   state.accessGranted=granted;
@@ -804,7 +816,7 @@ function drawInteractionEditor(c,offset,wallTop,ground) {
   if(!import.meta.env.DEV||!state.sceneEditing||state.editorLayer!=='interactions')return;
   state.interactions.forEach(interaction=>{
     const selected=interaction.id===state.selectedInteractionId,x=Number(interaction.x)*PX_PER_M-offset,y=wallTop+Number(interaction.y)*(ground-wallTop),radius=Number(interaction.radiusM||2.2)*PX_PER_M;
-    c.save();c.strokeStyle=selected?'#f0c849':'rgba(240,201,73,.72)';c.fillStyle=selected?'rgba(240,201,73,.16)':'rgba(240,201,73,.08)';c.lineWidth=selected?3:2;c.setLineDash([8,6]);c.beginPath();c.ellipse(x,ground-18,radius,18,0,0,Math.PI*2);c.fill();c.stroke();c.setLineDash([]);c.beginPath();c.arc(x,y,selected?10:6,0,Math.PI*2);c.fill();c.stroke();c.fillStyle='#25211d';c.font='700 11px sans-serif';c.textAlign='center';c.fillText(interaction.game==='civava'?'2':'1',x,y+4);c.restore();
+    c.save();c.strokeStyle=selected?'#f0c849':'rgba(240,201,73,.72)';c.fillStyle=selected?'rgba(240,201,73,.16)':'rgba(240,201,73,.08)';c.lineWidth=selected?3:2;c.setLineDash([8,6]);c.beginPath();c.ellipse(x,ground-18,radius,18,0,0,Math.PI*2);c.fill();c.stroke();c.setLineDash([]);c.beginPath();c.arc(x,y,selected?10:6,0,Math.PI*2);c.fill();c.stroke();c.fillStyle='#25211d';c.font='700 11px sans-serif';c.textAlign='center';c.fillText(interaction.game==='ojha'?'3':interaction.game==='civava'?'2':'1',x,y+4);c.restore();
   });
 }
 
