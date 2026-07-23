@@ -10,9 +10,9 @@ const ASSETS = {
   audi: '/assets/run/audi.png'
 };
 
-const TOTAL_DISTANCE = 900;
-const CRASH_DISTANCE = 610;
-const VIEW_DISTANCE = 195;
+const TOTAL_DISTANCE = 2100;
+const CRASH_DISTANCE = 1370;
+const VIEW_DISTANCE = 220;
 const JUMP_DURATION = .92;
 const BEST_KEY = 'mur:ojha-best-v1';
 const SOUNDTRACK_SRC = '/assets/audio/run.mp3';
@@ -24,14 +24,19 @@ const QUESTIONS = [
   'Môžete sa zastaviť.'
 ];
 const SCENES = [
-  { from: 0, to: 300, label: 'CHODBA FPU', image: 'corridor' },
-  { from: 300, to: 630, label: 'ULICA', image: 'street' },
-  { from: 630, to: TOTAL_DISTANCE, label: 'NÁVRAT DO BUDOVY', image: 'courtyard' }
+  { from: 0, to: 700, label: 'CHODBA FPU', image: 'corridor', horizon: .36, ground: .88, laneSpread: .245 },
+  { from: 700, to: 1400, label: 'ULICA', image: 'street', horizon: .35, ground: .89, laneSpread: .215 },
+  { from: 1400, to: TOTAL_DISTANCE, label: 'NÁVRAT DO BUDOVY', image: 'courtyard', horizon: .37, ground: .89, laneSpread: .225 }
 ];
+const obstacleRun = (start, spacing, lanes, doubles = []) => lanes.map((lane, index) => [
+  start + index * spacing,
+  lane,
+  doubles.includes(index) ? 2 : 1
+]);
 const OBSTACLES = [
-  [76,-1,1],[122,1,1],[168,0,1],[214,-1,2],[252,1,1],
-  [342,0,1],[378,-1,1],[416,1,2],[454,0,1],[494,-1,1],[538,1,2],[574,0,1],
-  [676,1,1],[714,-1,2],[750,0,1],[786,1,2],[820,-1,1],[852,0,2]
+  ...obstacleRun(92, 42, [-1,1,0,-1,1,0,1,-1,0,1,-1,0,1,-1], [4,9,12]),
+  ...obstacleRun(758, 43, [0,-1,1,0,1,-1,0,-1,1,0,1,-1,0,1], [3,7,11]),
+  ...obstacleRun(1460, 43, [1,-1,0,1,0,-1,1,-1,0,1,0,-1,1,0,-1], [2,6,10,13])
 ].map(([at,lane,stack], id) => ({ id, at, lane, stack, handled: false }));
 const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value)));
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -207,8 +212,8 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtra
   }
 
   function sceneIndexAt(value) {
-    if (value >= 630) return 2;
-    if (value >= 300) return 1;
+    if (value >= 1400) return 2;
+    if (value >= 700) return 1;
     return 0;
   }
 
@@ -293,10 +298,10 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtra
       distance += baseSpeed * (slowTime > 0 ? .42 : 1) * dt;
       score += Math.round(baseSpeed * dt * (8 + Math.min(combo, 8)));
 
-      if (nextQuestion === 0 && distance >= 58) sayQuestion(0, now);
-      else if (nextQuestion === 1 && distance >= 238) sayQuestion(1, now);
-      else if (nextQuestion === 2 && distance >= 420) sayQuestion(2, now);
-      else if (nextQuestion === 4 && distance >= 790) sayQuestion(4, now);
+      if (nextQuestion === 0 && distance >= 135) sayQuestion(0, now);
+      else if (nextQuestion === 1 && distance >= 560) sayQuestion(1, now);
+      else if (nextQuestion === 2 && distance >= 1020) sayQuestion(2, now);
+      else if (nextQuestion === 4 && distance >= 1850) sayQuestion(4, now);
 
       obstacles.forEach(obstacle => {
         if (obstacle.handled || oldDistance >= obstacle.at || distance < obstacle.at) return;
@@ -323,7 +328,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtra
       lane += (0 - lane) * (1 - Math.exp(-9 * dt));
       if (crashTime >= 1.55) {
         phase = 'playing';
-        distance = 632;
+        distance = 1402;
         lastScene = 2;
         stageCard.textContent = '3 · NÁVRAT DO BUDOVY';
         stageCard.hidden = false;
@@ -363,20 +368,54 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtra
     context.fillRect(0, 0, width, height);
   }
 
+  function scenePerspective(width, height) {
+    const scene = SCENES[sceneIndexAt(distance)];
+    return {
+      horizon: height * scene.horizon,
+      ground: height * scene.ground,
+      spread: width * scene.laneSpread
+    };
+  }
+
+  function drawLaneGuides(width, height) {
+    const { horizon, ground, spread } = scenePerspective(width, height);
+    const startY = horizon + (ground - horizon) * .08;
+    const activeLeft = targetLane - .5;
+    const activeRight = targetLane + .5;
+    context.save();
+    context.beginPath();
+    context.moveTo(width * .5 + activeLeft * spread * .08, startY);
+    context.lineTo(width * .5 + activeRight * spread * .08, startY);
+    context.lineTo(width * .5 + activeRight * spread, ground);
+    context.lineTo(width * .5 + activeLeft * spread, ground);
+    context.closePath();
+    context.fillStyle = 'rgba(92,177,238,.075)';
+    context.fill();
+    context.strokeStyle = 'rgba(235,244,249,.62)';
+    context.lineWidth = 1.25;
+    context.setLineDash([9, 13]);
+    context.lineDashOffset = -(distance * .9) % 22;
+    [-1.5,-.5,.5,1.5].forEach(boundary => {
+      context.beginPath();
+      context.moveTo(width * .5 + boundary * spread * .08, startY);
+      context.lineTo(width * .5 + boundary * spread, ground);
+      context.stroke();
+    });
+    context.restore();
+  }
+
   function obstaclePosition(obstacle, width, height) {
     const delta = obstacle.at - distance;
     const depth = clamp(1 - delta / VIEW_DISTANCE, 0, 1);
     const eased = depth * depth;
-    const horizon = height * .27;
-    const ground = height * .86;
-    const nearSpread = [.23, .145, .16][sceneIndexAt(distance)];
-    const spread = width * (.025 + eased * nearSpread);
+    const perspective = scenePerspective(width, height);
+    const spread = perspective.spread * (.08 + eased * .92);
     return {
-      visible: delta > -24 && delta < VIEW_DISTANCE,
+      visible: delta > -3 && delta < VIEW_DISTANCE,
       x: width * .5 + obstacle.lane * spread,
-      y: horizon + eased * (ground - horizon),
+      y: perspective.horizon + eased * (perspective.ground - perspective.horizon),
       scale: .1 + eased * .82,
-      alpha: clamp(delta / 16 + 1, 0, 1)
+      alpha: clamp((delta + 3) / 3, 0, 1)
     };
   }
 
@@ -414,7 +453,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtra
     const drawHeight = 242 * scale;
     const drawWidth = drawHeight * frameWidth / image.height;
     const jumpLift = jumping ? Math.sin(Math.PI * progress) * height * .15 : 0;
-    const laneSpread = width * [.23, .145, .16][sceneIndexAt(distance)];
+    const laneSpread = scenePerspective(width, height).spread;
     const x = width * .5 + lane * laneSpread;
     const y = height * .885 - jumpLift;
     const crashJolt = phase === 'crash' && crashTime > .7
@@ -448,8 +487,9 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, soundtra
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     context.clearRect(0, 0, width, height);
     drawBackground(width, height);
+    drawLaneGuides(width, height);
     obstacles
-      .filter(obstacle => !obstacle.handled || obstacle.at - distance > -24)
+      .filter(obstacle => obstacle.at - distance > -3)
       .sort((a, b) => b.at - a.at)
       .forEach(obstacle => drawBook(obstacle, width, height));
     drawPlayer(now, width, height);
