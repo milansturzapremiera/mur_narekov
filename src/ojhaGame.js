@@ -24,9 +24,9 @@ const QUESTIONS = [
   'Môžete sa zastaviť.'
 ];
 const SCENES = [
-  { from: 0, to: 700, label: 'CHODBA FPU', image: 'corridor', horizon: .36, ground: .88, laneSpread: .245 },
-  { from: 700, to: 1400, label: 'ULICA', image: 'street', horizon: .35, ground: .89, laneSpread: .215 },
-  { from: 1400, to: TOTAL_DISTANCE, label: 'NÁVRAT DO BUDOVY', image: 'courtyard', horizon: .37, ground: .89, laneSpread: .225 }
+  { from: 0, to: 700, label: 'CHODBA FPU', tempo: 'TEMPO I', image: 'corridor', speed: 38, cadence: 62, horizon: .36, ground: .88, laneSpread: .245 },
+  { from: 700, to: 1400, label: 'ULICA', tempo: 'TEMPO II', image: 'street', speed: 47, cadence: 52, horizon: .35, ground: .89, laneSpread: .215 },
+  { from: 1400, to: TOTAL_DISTANCE, label: 'NÁVRAT DO BUDOVY', tempo: 'TEMPO III', image: 'courtyard', speed: 58, cadence: 43, horizon: .37, ground: .89, laneSpread: .225 }
 ];
 const obstacleRun = (start, spacing, lanes, doubles = []) => lanes.map((lane, index) => [
   start + index * spacing,
@@ -202,7 +202,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, onBriefc
     nextQuestion = 0;
     bubbleUntil = 0;
     stageCardUntil = performance.now() + 1700;
-    stageCard.textContent = '1 · CHODBA FPU';
+    stageCard.textContent = '1 · CHODBA FPU · TEMPO I';
     stageCard.hidden = false;
     bubble.hidden = true;
     obstacles = OBSTACLES.map(obstacle => ({ ...obstacle, handled: false }));
@@ -295,7 +295,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, onBriefc
       }
       slowTime = Math.max(0, slowTime - dt);
       const scene = sceneIndexAt(distance);
-      const baseSpeed = [35, 40, 45][scene];
+      const baseSpeed = SCENES[scene].speed;
       const oldDistance = distance;
       distance += baseSpeed * (slowTime > 0 ? .42 : 1) * dt;
       score += Math.round(baseSpeed * dt * (8 + Math.min(combo, 8)));
@@ -319,7 +319,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, onBriefc
       const currentScene = sceneIndexAt(distance);
       if (currentScene !== lastScene) {
         lastScene = currentScene;
-        stageCard.textContent = `${currentScene + 1} · ${SCENES[currentScene].label}`;
+        stageCard.textContent = `${currentScene + 1} · ${SCENES[currentScene].label} · ${SCENES[currentScene].tempo}`;
         stageCard.hidden = false;
         stageCardUntil = now + 1500;
       }
@@ -332,7 +332,7 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, onBriefc
         phase = 'playing';
         distance = 1402;
         lastScene = 2;
-        stageCard.textContent = '3 · NÁVRAT DO BUDOVY';
+        stageCard.textContent = '3 · NÁVRAT DO BUDOVY · TEMPO III';
         stageCard.hidden = false;
         stageCardUntil = now + 1500;
       }
@@ -448,11 +448,12 @@ export function createOjhaGame({ onOpen = () => {}, onClose = () => {}, onBriefc
     const jumping = jumpTime > 0;
     const image = jumping ? images.jump : images.run;
     if (!image?.complete) return;
-    const progress = jumping ? clamp(jumpTime / JUMP_DURATION, 0, .999) : (now / (slowTime > 0 ? 125 : 66)) % 5 / 5;
+    const cadence = SCENES[sceneIndexAt(distance)].cadence;
+    const progress = jumping ? clamp(jumpTime / JUMP_DURATION, 0, .999) : (now / (slowTime > 0 ? cadence * 1.9 : cadence)) % 5 / 5;
     const spriteFrame = jumping ? Math.min(4, Math.floor(progress * 5)) : Math.floor(progress * 5);
     const frameWidth = image.width / 5;
     const scale = clamp(Math.min(width / 620, height / 690), .52, 1.12);
-    const drawHeight = 242 * scale;
+    const drawHeight = 278 * scale;
     const drawWidth = drawHeight * frameWidth / image.height;
     const jumpLift = jumping ? Math.sin(Math.PI * progress) * height * .15 : 0;
     const laneSpread = scenePerspective(width, height).spread;
