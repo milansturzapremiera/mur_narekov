@@ -24,9 +24,9 @@ const QUESTIONS = [
   'Môžete sa zastaviť.'
 ];
 const SCENES = [
-  { from: 0, to: 700, label: 'CHODBA FPU', tempo: 'TEMPO I', image: 'corridor', speed: 38, cadence: 62, horizon: .36, ground: .88, laneSpread: .245 },
-  { from: 700, to: 1400, label: 'ULICA', tempo: 'TEMPO II', image: 'street', speed: 47, cadence: 52, horizon: .35, ground: .89, laneSpread: .215 },
-  { from: 1400, to: TOTAL_DISTANCE, label: 'NÁVRAT DO BUDOVY', tempo: 'TEMPO III', image: 'courtyard', speed: 58, cadence: 43, horizon: .37, ground: .89, laneSpread: .225 }
+  { from: 0, to: 700, label: 'CHODBA FPU', tempo: 'TEMPO I', image: 'corridor', speed: 42, cadence: 58, horizon: .36, ground: .88, laneSpread: .245 },
+  { from: 700, to: 1400, label: 'ULICA', tempo: 'TEMPO II', image: 'street', speed: 52, cadence: 48, horizon: .35, ground: .89, laneSpread: .215 },
+  { from: 1400, to: TOTAL_DISTANCE, label: 'NÁVRAT DO BUDOVY', tempo: 'TEMPO III', image: 'courtyard', speed: 64, cadence: 39, horizon: .37, ground: .89, laneSpread: .225 }
 ];
 const obstacleRun = (start, spacing, lanes, doubles = []) => lanes.map((lane, index) => [
   start + index * spacing,
