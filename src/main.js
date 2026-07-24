@@ -451,7 +451,7 @@ function drawPerson(c, x, ground, scale, p, motion=0, stride=0, walkEnergy=Math.
 
   if(p.ojhaBriefcase){
     const direction=p.dir<0?-1:1,caseSwing=gameMotionReduced()?0:sway*.055*energy;
-    c.save();c.translate(23-armShift,-42);c.rotate(caseSwing);
+    c.save();c.translate(13-armShift,-42);c.rotate(caseSwing);
     c.strokeStyle='#080807';c.fillStyle='#151413';c.lineWidth=2;
     c.beginPath();c.rect(7,0,10,7);c.stroke();
     c.beginPath();c.rect(-2,5,28,21);c.fill();c.stroke();
